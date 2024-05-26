@@ -1,0 +1,13 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="icons">
+        <file alias="main">basket.png</file>
+        <file alias="new">knotes.png</file>
+        <file alias="hide">hide-icon.png</file>
+        <file alias="prop">preferences-other.png</file>
+        <file alias="del">user-trash-full.png</file>
+    </qresource>
+    <!-- COMPILATION:
+    rcc -g python -o resources.py resources/resources.qrc
+    after that change PySide2 to PyQt6 -->
+</RCC>
