@@ -9,22 +9,24 @@ SQL = {
     title   TEXT        UNIQUE,
     text    TEXT        NOT NULL
     );''',
-
+# NULL titles don't count for uniqueness!!!
     'insert': '''INSERT INTO notes(id, title, text)
-    VALUES(?, ?, ?)
+    VALUES(:id, :title, :text)
     ;''',
 
-    'update': 'UPDATE notes SET title=?, text=? WHERE id = ?',
+    'update': 'UPDATE notes SET title=:title, text=:text WHERE id = :id',
 
     'upsert': '''INSERT INTO notes(id, title, text)
-    VALUES(?, ?, ?)
+    VALUES(:id, :title, :text)
     ON CONFLICT(id) DO UPDATE
-    SET title = ?,
-        text = ?
-    WHERE id = ?
+    SET title = :title,
+        text = :text
+    WHERE id = :id
     ;''',
 
     'fetch': 'SELECT id, title, text FROM notes;',
+
+    'delete': 'DELETE FROM notes WHERE id = :id'
 }
 
 class Note():
@@ -39,37 +41,44 @@ class Note():
             return object.__new__(cls)
 
     def __init__(self, text:str=None, title:str=None, id:int=None) -> None:
-        """ Set instance atributes """
+        """ Set instance atributes
+
+        Keyword Arguments:
+            text -- Note body. (default: {None})
+            title -- Note title. (default: {None})
+            id -- Database primary key. (default: {None})
+
+        Raises:
+            ValueError: If title is not unique.
+            TypeError: If id is not integer.
+        """
+        # test for title uniqueness
+        for note in self.data.values():
+            if note is self:
+                continue
+            if title is not None and note.title == title:
+                raise ValueError("title must be unique.")
+        # if already in data only update text/title if provided
         if hasattr(self, 'id'):
-            print('DEBUG1')
             if title:
                 self.title = title
             if text:
                 self.text = text
         else:
-            print('DEBUG2')
+            # pick smallest unused integer if id not provided
             if id is None:
                 id = 0
                 while id in self.data:
                     id += 1
-
+            # setup all attributes
             if isinstance(id, int):
                 self.id = id
             else:
                 raise TypeError('Provide integer id value.')
             self.title = title
             self.text = text if text else ''
-
+            # append to data
             self.data[self.id] = self
-            '''try:
-                if not self.conn:
-                    self.conn = sqlite3.connect(DBNAME, autocommit=False)
-                self.conn.execute(SQL['insert'], (self.id, self.title, self.text))
-                self.conn.commit()
-                self.conn.close()
-                self.conn = None
-            except sqlite3.Error as err:
-                print(err)'''
 
     def __repr__(self) -> str:
         """ Object representation as string """
@@ -82,14 +91,36 @@ class Note():
     def __eq__(self, other):
         """ Compare by title """
         return self.title == other.title
+    
+    def asdict(self) -> dict:
+        """ Returns dictionary representation """
+        return {'id': self.id,
+                'title': self.title,
+                'text': self.text}
 
-    def save(self, dbpath: str) -> bool:
-        """ Save note to database """
+    def save_del(self, command: str, dbpath: str=DBNAME) -> bool:
+        """ Execute changes on database
+
+        Arguments:
+            command -- One of SQL statements
+
+        Keyword Arguments:
+            dbpath -- Database path (default: {DBNAME})
+
+        Raises:
+            KeyError: Wrong command
+
+        Returns:
+            Success or failure
+        """
         try:
             conn = sqlite3.connect(dbpath, autocommit=False)
-            conn.execute(SQL['update'], (self.title, self.text, self.id))
+            conn.execute(SQL[command], self.asdict())
             conn.commit()
             conn.close()
+        except KeyError as err:
+            err.args += (f"'command' must be one of {list(SQL)}",)
+            raise err
         except sqlite3.Error as err:
             print(err)
             return False
@@ -97,7 +128,15 @@ class Note():
             return True
 
     @classmethod
-    def sync_db(cls, dbpath: str) -> bool:
+    def fetch_db(cls, dbpath: str=DBNAME) -> bool:
+        """ Fetch all notes from database and instantiate them
+
+        Keyword Arguments:
+            dbpath -- Database path (default: {DBNAME})
+
+        Returns:
+            Success or failure
+        """
         try:
             conn = sqlite3.connect(dbpath, autocommit=False)
             conn.execute(SQL['create'])
@@ -109,11 +148,13 @@ class Note():
         except sqlite3.Error as err:
             print(err)
             return False
-        finally:
-                return True if cls.data else False
+        else:
+            return True if cls.data else False
 
 
 if __name__ == '__main__':
-    print(Note.sync_db(DBNAME))
-    print(Note.data)
-    #print(Note.data[1])
+    if Note.fetch_db():
+        print("Succesfully connected with database and fetched notes:")
+        print(Note.data)
+    else:
+        print("Something went wrong, or database is empty.")
