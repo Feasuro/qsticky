@@ -1,47 +1,53 @@
 #!/usr/bin/env python
 
 import sys
+import os
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QIcon
-from PyQt6.QtWidgets import QApplication, QTextEdit, QSizeGrip
+from PyQt6.QtWidgets import QApplication, QPlainTextEdit, QSizeGrip
 
 import resources
 
+DEBUG = os.getenv('DEBUG')
 
-class NoteWindow(QTextEdit):
+class NoteWindow(QPlainTextEdit):
     """ Note window """
-    
     def __init__(self, *args, **kwargs) -> None:
+        """ Initialize the note window. """
         super().__init__(*args, **kwargs)
+        self.setup_ui()
+
+    def setup_ui(self) -> None:
+        """ Set up the UI for the note window. """
         # Window decorations
         self.setWindowTitle('QSticky')
         self.setWindowIcon(QIcon(':/icons/main'))
-        self.setToolTip('''Drag with left mouse button.\nRight click to open context menu.''')
+        self.setToolTip('Drag with left mouse button.\nRight click to open context menu.')
         self.setToolTipDuration(2000)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         # Resizing
         gripsize = 16
         self.grip = QSizeGrip(self)
         self.grip.resize(gripsize, gripsize)
-        # Icons
-        self.icons = {}
-        self.icons['new'] = QIcon(':/icons/new')
-        self.icons['hide'] = QIcon(':/icons/hide')
-        self.icons['properties'] = QIcon(':/icons/prop')
-        self.icons['delete'] = QIcon(':/icons/del')
         # Actions
+        icons = {
+            'new': QIcon(':/icons/new'),
+            'hide': QIcon(':/icons/hide'),
+            'preferences': QIcon(':/icons/prop'),
+            'delete': QIcon(':/icons/del')
+        }
         self.actions = {}
         self.actions['new'] = QAction('&New', self)
         self.actions['new'].setShortcut('Ctrl+N')
         self.actions['hide'] = QAction('&Hide', self)
         self.actions['hide'].setShortcut('Ctrl+H')
-        self.actions['properties'] = QAction('Pr&operties', self)
-        self.actions['properties'].setShortcut('Ctrl+O')
+        self.actions['preferences'] = QAction('Pre&ferences', self)
+        self.actions['preferences'].setShortcut('Ctrl+P')
         self.actions['delete'] = QAction('&Delete', self)
         self.actions['delete'].setShortcut('Ctrl+D')
-        for key in self.actions:
-            self.actions[key].setIcon(self.icons[key])
+        for name, action in self.actions.items():
+            action.setIcon(icons[name])
 
     def contextMenuEvent(self, event) -> None:
         """ Add custom actions to default context menu """
@@ -55,17 +61,18 @@ class NoteWindow(QTextEdit):
         """ Drag & drop support - save starting position """
         super().mousePressEvent(event)
         if event.button() == Qt.MouseButton.LeftButton:
-            self._dragStart = event.pos()
+            self._dragstart = event.pos()
 
     def mouseMoveEvent(self, event) -> None:
         """ Drag & drop support - move window"""
         if event.buttons() == Qt.MouseButton.LeftButton:
-            self.move(event.globalPosition().toPoint() - self._dragStart)
+            self.move(event.globalPosition().toPoint() - self._dragstart)
 
     def resizeEvent(self, event):
         """ Adjust the resizing grip position while resizing. """
         super().resizeEvent(event)
-        self.grip.move(self.rect().right() - self.grip.width(), self.rect().bottom() - self.grip.height())
+        self.grip.move(self.rect().right() - self.grip.width(),
+                       self.rect().bottom() - self.grip.height())
 
 
 if __name__ == '__main__':
