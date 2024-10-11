@@ -25,7 +25,7 @@ class NoteWindow(QPlainTextEdit):
         self.setWindowIcon(QIcon(':/icons/main'))
         self.setToolTip('Drag with left mouse button.\nRight click to open context menu.')
         self.setToolTipDuration(2000)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.ToolTip)
         # Resizing
         gripsize = 16
         self.grip = QSizeGrip(self)
