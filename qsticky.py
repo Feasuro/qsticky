@@ -4,7 +4,7 @@ import sys
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QIcon
-from PyQt6.QtWidgets import QApplication, QTextEdit
+from PyQt6.QtWidgets import QApplication, QTextEdit, QSizeGrip
 
 import resources
 
@@ -20,6 +20,10 @@ class NoteWindow(QTextEdit):
         self.setToolTip('''Drag with left mouse button.\nRight click to open context menu.''')
         self.setToolTipDuration(2000)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        # Resizing
+        gripsize = 16
+        self.grip = QSizeGrip(self)
+        self.grip.resize(gripsize, gripsize)
         # Icons
         self.icons = {}
         self.icons['new'] = QIcon(':/icons/new')
@@ -57,6 +61,11 @@ class NoteWindow(QTextEdit):
         """ Drag & drop support - move window"""
         if event.buttons() == Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._dragStart)
+
+    def resizeEvent(self, event):
+        """ Adjust the resizing grip position while resizing. """
+        super().resizeEvent(event)
+        self.grip.move(self.rect().right() - self.grip.width(), self.rect().bottom() - self.grip.height())
 
 
 if __name__ == '__main__':
