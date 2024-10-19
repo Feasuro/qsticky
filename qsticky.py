@@ -3,7 +3,7 @@
 import sys
 import os
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTranslator, QLibraryInfo, QLocale
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit, QSizeGrip
 
@@ -11,7 +11,7 @@ import resources
 
 DEBUG = os.getenv('DEBUG')
 
-class NoteWindow(QPlainTextEdit):
+class NoteWidget(QPlainTextEdit):
     """ Note window """
     def __init__(self, *args, **kwargs) -> None:
         """ Initialize the note window. """
@@ -23,7 +23,7 @@ class NoteWindow(QPlainTextEdit):
         # Window decorations
         self.setWindowTitle('QSticky')
         self.setWindowIcon(QIcon(':/icons/main'))
-        self.setToolTip('Drag with left mouse button.\nRight click to open context menu.')
+        self.setToolTip(self.tr('Drag with left mouse button.\nRight click to open context menu.'))
         self.setToolTipDuration(2000)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.ToolTip)
         # Resizing
@@ -34,23 +34,26 @@ class NoteWindow(QPlainTextEdit):
         icons = {
             'new': QIcon(':/icons/new'),
             'hide': QIcon(':/icons/hide'),
+            'show': QIcon(':/icons/show'),
             'preferences': QIcon(':/icons/prop'),
             'delete': QIcon(':/icons/del')
         }
         self.actions = {}
-        self.actions['new'] = QAction('&New', self)
+        self.actions['new'] = QAction(self.tr('&New'), self)
         self.actions['new'].setShortcut('Ctrl+N')
-        self.actions['hide'] = QAction('&Hide', self)
+        self.actions['hide'] = QAction(self.tr('&Hide'), self)
         self.actions['hide'].setShortcut('Ctrl+H')
-        self.actions['preferences'] = QAction('Pre&ferences', self)
+        self.actions['show'] = QAction(self.tr('Sho&w all'), self)
+        self.actions['show'].setShortcut('Ctrl+W')
+        self.actions['preferences'] = QAction(self.tr('Pre&ferences'), self)
         self.actions['preferences'].setShortcut('Ctrl+P')
-        self.actions['delete'] = QAction('&Delete', self)
+        self.actions['delete'] = QAction(self.tr('&Delete'), self)
         self.actions['delete'].setShortcut('Ctrl+D')
         for name, action in self.actions.items():
             action.setIcon(icons[name])
 
     def contextMenuEvent(self, event) -> None:
-        """ Add custom actions to default context menu """
+        """ Add custom actions to default context menu. """
         menu = self.createStandardContextMenu()
         top = menu.actions()[0]     # get the first action
         menu.insertActions(top, self.actions.values())
@@ -58,13 +61,13 @@ class NoteWindow(QPlainTextEdit):
         menu.exec(event.globalPos())
 
     def mousePressEvent(self, event) -> None:
-        """ Drag & drop support - save starting position """
+        """ Drag & drop support - save starting position. """
         super().mousePressEvent(event)
         if event.button() == Qt.MouseButton.LeftButton:
             self._dragstart = event.pos()
 
     def mouseMoveEvent(self, event) -> None:
-        """ Drag & drop support - move window"""
+        """ Drag & drop support - move window. """
         if event.buttons() == Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._dragstart)
 
@@ -77,6 +80,14 @@ class NoteWindow(QPlainTextEdit):
 
 if __name__ == '__main__':
     app = QApplication([])
-    note = NoteWindow()
+
+    path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    translator = QTranslator(app)
+    if translator.load(QLocale(), "qtbase", "_", path):
+        app.installTranslator(translator)
+    if translator.load(QLocale(), "qsticky", "_", ":/i18n"):
+        app.installTranslator(translator)
+
+    note = NoteWidget()
     note.show()
     sys.exit(app.exec())
