@@ -71,6 +71,10 @@ class NoteWidget(QPlainTextEdit):
         self.actions['delete'].setShortcut('Ctrl+D')
         for name, action in self.actions.items():
             action.setIcon(icons[name])
+        # Signals
+        self.actions['new'].triggered.connect(NoteApplication.instance().new_note)
+        self.actions['hide'].triggered.connect(self.hide)
+        self.actions['delete'].triggered.connect(lambda: NoteApplication.instance().delete_note(self.id))
 
     def contextMenuEvent(self, event) -> None:
         """ Add custom actions to default context menu. """
@@ -91,11 +95,16 @@ class NoteWidget(QPlainTextEdit):
         if event.buttons() == Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._dragstart)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event) -> None:
         """ Adjust the resizing grip position while resizing. """
         super().resizeEvent(event)
         self.grip.move(self.rect().right() - self.grip.width(),
                        self.rect().bottom() - self.grip.height())
+
+    def focusOutEvent(self, event) -> None:
+        """ Save the note text and position when focus is lost. """
+        super().focusOutEvent(event)
+        NoteApplication.instance().db.update(self.as_dict())
 
     def as_dict(self) -> dict:
         """ Convert the note window to a dictionary. """
@@ -135,7 +144,15 @@ class NoteApplication(QApplication):
         while rowid in NoteWidget.all:
             rowid += 1
         NoteWidget(rowid).show()
-        self.db.save(NoteWidget(rowid).as_dict())
+        self.db.save(NoteWidget.all[rowid].as_dict())
+
+    def delete_note(self, rowid) -> None:
+        """ Delete note window and database record. """
+        if DEBUG: print("DEBUG: NoteApplication::delete_note", rowid)
+        if rowid in NoteWidget.all:
+            NoteWidget.all[rowid].close()
+            self.db.delete(rowid)
+            del NoteWidget.all[rowid]
 
 
 if __name__ == '__main__':
