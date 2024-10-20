@@ -13,9 +13,23 @@ DEBUG = os.getenv('DEBUG')
 
 class NoteWidget(QPlainTextEdit):
     """ Note window """
-    def __init__(self, *args, **kwargs) -> None:
+    all = {}
+
+    def __new__(cls, rowid, *args, **kwargs):
+        """ Create a new instance of NoteWidget or return an existing one. """
+        if rowid in cls.all:
+            return cls.all[rowid]
+        self = super().__new__(cls)
+        cls.all[rowid] = self
+        return self
+
+    def __init__(self, rowid, text='', xpos=10, ypos=10, width=256, height=256, bgcolor='lemonchiffon', font=None, *args, **kwargs) -> None:
         """ Initialize the note window. """
+        if DEBUG: print("DEBUG: NoteWidget::__init__\n      ", rowid, text, xpos, ypos, width, height, bgcolor, font, *args, **kwargs)
         super().__init__(*args, **kwargs)
+        self.id = rowid
+        self.setGeometry(xpos, ypos, width, height)
+        self.setPlainText(text)
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -88,6 +102,6 @@ if __name__ == '__main__':
     if translator.load(QLocale(), "qsticky", "_", ":/i18n"):
         app.installTranslator(translator)
 
-    note = NoteWidget()
+    note = NoteWidget(0)
     note.show()
     sys.exit(app.exec())
