@@ -19,15 +19,29 @@ SQL = {
     'retrieve': 'SELECT * FROM notes;',
 
     'upsert': '''INSERT INTO notes(id, text, xpos, ypos, width, height, bgcolor, font)
-    VALUES(:id, :text, :xpos, :ypos, :width, :height, :bgcolor, :font)
-    ON CONFLICT(id) DO UPDATE
-    SET text = :text, xpos = :xpos, ypos = :ypos, width = :width, height = :height,
-    bgcolor = :bgcolor, font = :font WHERE id = :id;''',
+        VALUES(:id, :text, :xpos, :ypos, :width, :height, :bgcolor, :font)
+        ON CONFLICT(id) DO UPDATE
+        SET text = :text, xpos = :xpos, ypos = :ypos, width = :width, height = :height,
+        bgcolor = :bgcolor, font = :font WHERE id = :id;''',
 
     'update': '''UPDATE notes SET text = :text, xpos = :xpos, ypos = :ypos,
-    width = :width, height = :height WHERE id = :id;''',
+        width = :width, height = :height WHERE id = :id;''',
 
     'delete': 'DELETE FROM notes WHERE id = :id;',
+
+    'pref_init': '''CREATE TABLE IF NOT EXISTS preferences (
+        id      INTEGER     PRIMARY KEY,
+        checked INTEGER        NOT NULL,
+        bgcolor TEXT,
+        font    TEXT);''',
+
+    'pref_insert': '''INSERT INTO preferences(id, checked, bgcolor, font)
+        VALUES (0, 1, 'lemonchiffon', '');''',
+
+    'pref_get': 'SELECT checked, bgcolor, font FROM preferences WHERE id = 0;',
+
+    'pref_update': '''UPDATE preferences
+        SET checked = ?, bgcolor = ?, font = ? WHERE id = 0;''',
 }
 
 class DataBaseConnector(ABC):
@@ -85,25 +99,28 @@ class SQLiteConnector(DataBaseConnector):
             db (str): The path of the SQLite database file. """
         self.conn = sqlite3.connect(db)
         self.execute_sql('init')
+        self.execute_sql('pref_init')
+        if not self.execute_sql('pref_get').fetchone():
+            self.execute_sql('pref_insert')
 
-    def execute_sql(self, argument: str, values:dict|int={}) -> sqlite3.Cursor:
+    def execute_sql(self, argument: str, values:dict|tuple|int={}) -> sqlite3.Cursor:
         """ Execute SQL statement on the database.
 
         Args:
-        argument (str): The SQL statement to execute.
-        values (dict|int, optional): A dictionary representing the SQL statement values or note id.
-        Defaults to None.
+            argument (str): The SQL statement to execute.
+            values (dict|tuple|int, optional): A dictionary representing the SQL statement values or note id.
+                Defaults to None.
 
         Returns:
-        bool: True if the SQL statement executed successfully, False otherwise.
+            bool: True if the SQL statement executed successfully, False otherwise.
 
         Raises:
-        ValueError: If the provided argument is invalid. """
+            ValueError: If the provided argument is invalid. """
         if argument not in SQL:
             raise ValueError(f"Invalid SQL argument: {argument}")
         if isinstance(values, int):
             values = {'id': values}  # convert note rowid to dict for sqlite3
-        if DEBUG: print(f"INFO : Executing SQL: '{argument}' for note {values.get('id')}")
+        if DEBUG: print(f"INFO : Executing SQL: '{argument}' with {values.get('id') if isinstance(values, dict) else values}")
         try:
             cursor = self.conn.execute(SQL[argument], values)
             self.conn.commit()
@@ -117,7 +134,7 @@ class SQLiteConnector(DataBaseConnector):
         """ Return a list of all notes in the database.
 
         Returns:
-        list: A list of tuples representing notes. """
+            list: A list of tuples representing notes. """
         return self.execute_sql('retrieve').fetchall()
 
     def save(self, note: dict) -> bool:
@@ -131,3 +148,17 @@ class SQLiteConnector(DataBaseConnector):
     def delete(self, rowid: int) -> bool:
         """ Delete a note from the database. """
         return bool(self.execute_sql('delete', rowid))
+
+    def get_preferences(self) -> tuple:
+        """ Retrieve the application preferences.
+
+        Returns:
+            tuple: A tuple containing the checked state, background color, and font. """
+        return self.execute_sql('pref_get').fetchone()
+
+    def save_preferences(self, preferences:tuple) -> bool:
+        """ Save the global preferences in database.
+
+        Args:
+            preferences (tuple): A tuple containing the checked state background color and font"""
+        return bool(self.execute_sql('pref_update', preferences))

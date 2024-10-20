@@ -120,10 +120,22 @@ class NoteWidget(QPlainTextEdit):
             'font': self.font().toString()
         }
 
-    def apply(self, bgcolor:str, font:QFont) -> None:
+    def apply(self, bgcolor:str, font:str|QFont) -> None:
         """ Apply the selected color and font to the note window. """
         self.setStyleSheet('NoteWidget {background-color:' + bgcolor + ';}')
-        self.setFont(font)
+        if isinstance(font, QFont):
+            self.setFont(font)
+        else:
+            _font = QFont()
+            _font.fromString(font)
+            self.setFont(_font)
+
+    @classmethod
+    def apply_to_all(cls, bgcolor:str, font:str|QFont) -> None:
+        """ Apply the selected color and font to all notes. """
+        if DEBUG: print("DEBUG: NoteWidget::apply_to_all", bgcolor, font)
+        for note in cls.all.values():
+            note.apply(bgcolor, font)
 
 
 class NoteApplication(QApplication):
@@ -133,7 +145,7 @@ class NoteApplication(QApplication):
         super().__init__(*args, **kwargs)
         self.setQuitOnLastWindowClosed(False)
         self.db = SQLiteConnector(DBPATH)
-        self.prefs = None
+        self.pref_widget = None
 
     def start(self) -> None:
         """ Show saved notes if found, if not create one. """
@@ -144,6 +156,9 @@ class NoteApplication(QApplication):
                 NoteWidget(*row).show()
         else:
             self.new_note()
+        pref = self.db.get_preferences()
+        if pref[0]:
+            NoteWidget.apply_to_all(*pref[1:])
 
     def new_note(self) -> None:
         """ Create a new empty note window. """
@@ -181,9 +196,22 @@ class NoteApplication(QApplication):
 
     def prefs_dialog(self, rowid:int) -> None:
         """ Open the preferences dialog for the specified note. """
-        self.prefs = PreferencesWidget(NoteWidget.all[rowid])
-        self.prefs.show()
+        preferences = self.db.get_preferences()
+        if DEBUG: print(f"DEBUG: NoteApplication::prefs_dialog rowid={rowid}; prefs={preferences}")
+        self.pref_widget = PreferencesWidget(*preferences, NoteWidget.all[rowid])
+        self.pref_widget.save_signal.connect(lambda prefs: self.save_preferences(rowid, prefs))
+        self.pref_widget.show()
 
+    def save_preferences(self, rowid:int, preferences:tuple) -> None:
+        """ Save chosen preferences in the database.
+
+        Args:
+            rowid (int): The ID of the note for which preferences are being saved.
+            preferences (tuple): Global preferences chosen in dialog. """
+        if DEBUG: print(f"DEBUG: NoteApplication::save_preferences rowid={rowid}; prefs={preferences}")
+        if not preferences[0]:
+            self.db.save(NoteWidget.all[rowid].as_dict())
+        self.db.save_preferences(preferences)
 
 if __name__ == '__main__':
     app = NoteApplication(sys.argv)

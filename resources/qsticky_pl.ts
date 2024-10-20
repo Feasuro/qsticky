@@ -39,19 +39,36 @@ Prawym przyciskiem otwórz menu kontekstowe.</translation>
 <context>
     <name>PreferencesWidget</name>
     <message>
-        <location filename="../preferences.py" line="65"/>
+        <location filename="../preferences.py" line="62"/>
+        <source>Use global settings.</source>
+        <translation>Użyj ustawień globalnych.</translation>
+    </message>
+    <message>
+        <location filename="../preferences.py" line="75"/>
         <source>QSticky - preferences</source>
         <translation>QSticky - preferencje</translation>
     </message>
     <message>
-        <location filename="../preferences.py" line="76"/>
+        <location filename="../preferences.py" line="87"/>
+        <source>Global settings</source>
+        <translation>Ustawienia globalne</translation>
+    </message>
+    <message>
+        <location filename="../preferences.py" line="94"/>
+        <location filename="../preferences.py" line="89"/>
         <source>Background:</source>
         <translation>Tło:</translation>
     </message>
     <message>
-        <location filename="../preferences.py" line="77"/>
+        <location filename="../preferences.py" line="95"/>
+        <location filename="../preferences.py" line="90"/>
         <source>Font:</source>
         <translation>Czcionka:</translation>
+    </message>
+    <message>
+        <location filename="../preferences.py" line="92"/>
+        <source>Chosen settings</source>
+        <translation>Wybrane ustawienia</translation>
     </message>
 </context>
 </TS>
