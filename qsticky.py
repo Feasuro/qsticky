@@ -73,7 +73,8 @@ class NoteWidget(QPlainTextEdit):
             action.setIcon(icons[name])
         # Signals
         self.actions['new'].triggered.connect(NoteApplication.instance().new_note)
-        self.actions['hide'].triggered.connect(self.hide)
+        self.actions['hide'].triggered.connect(lambda: self.hide() or NoteApplication.instance().quit_condition())
+        self.actions['show'].triggered.connect(NoteApplication.instance().show_all)
         self.actions['delete'].triggered.connect(lambda: NoteApplication.instance().delete_note(self.id))
 
     def contextMenuEvent(self, event) -> None:
@@ -125,6 +126,7 @@ class NoteApplication(QApplication):
     def __init__(self, *args, **kwargs) -> None:
         """ Initialize the application. """
         super().__init__(*args, **kwargs)
+        self.setQuitOnLastWindowClosed(False)
         self.db = SQLiteConnector(DBPATH)
 
     def start(self) -> None:
@@ -153,6 +155,23 @@ class NoteApplication(QApplication):
             NoteWidget.all[rowid].close()
             self.db.delete(rowid)
             del NoteWidget.all[rowid]
+        self.quit_condition()
+
+    def show_all(self) -> None:
+        """ Show all hidden note windows. """
+        if DEBUG: print("DEBUG: NoteApplication::show_all")
+        for note in NoteWidget.all.values():
+            if not note.isVisible():
+                note.show()
+
+    def quit_condition(self) -> None:
+        """ Check if any note window is visible, exit otherwise. """
+        for note in NoteWidget.all.values():
+            if note.isVisible():
+                break
+        else:
+            if DEBUG: print("INFO : All notes are hidden, Exiting...")
+            self.quit()
 
 
 if __name__ == '__main__':
@@ -162,6 +181,7 @@ if __name__ == '__main__':
     translator = QTranslator(app)
     if translator.load(QLocale(), "qtbase", "_", path):
         app.installTranslator(translator)
+    translator = QTranslator(app)
     if translator.load(QLocale(), "qsticky", "_", ":/i18n"):
         app.installTranslator(translator)
 
