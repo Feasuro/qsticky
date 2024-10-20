@@ -4,12 +4,12 @@ import sys
 import os
 
 from PyQt6.QtCore import Qt, QTranslator, QLibraryInfo, QLocale
-from PyQt6.QtGui import QAction, QIcon, QFont
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit, QSizeGrip
 
 import resources
 from data import SQLiteConnector
-from preferences import PreferencesWidget
+from preferences import PreferencesWidget, Font
 
 DEBUG = os.getenv('DEBUG')
 DBPATH = os.getenv('DBPATH', default='resources/qsticky.db')
@@ -26,17 +26,16 @@ class NoteWidget(QPlainTextEdit):
         cls.all[rowid] = self
         return self
 
-    def __init__(self, rowid, text='', xpos=10, ypos=10, width=256, height=256, bgcolor='lemonchiffon', font='', *args, **kwargs) -> None:
+    def __init__(self, rowid, text='', xpos=10, ypos=10, width=256, height=256,
+                 bgcolor='lemonchiffon', font='', fcolor='black', *args, **kwargs) -> None:
         """ Initialize the note window. """
-        if DEBUG: print("DEBUG: NoteWidget::__init__\n      ", rowid, text, xpos, ypos, width, height, bgcolor, font, *args, **kwargs)
+        if DEBUG: print("DEBUG: NoteWidget::__init__\n      ",rowid, text, xpos, ypos,
+                        width, height, bgcolor, font, fcolor, *args, **kwargs)
         super().__init__(*args, **kwargs)
         self.id = rowid
         self.setGeometry(xpos, ypos, width, height)
         self.setPlainText(text)
-        self.setStyleSheet('NoteWidget {background-color:' + bgcolor + ';}')
-        _font = QFont()
-        if _font.fromString(font):
-            self.setFont(_font)
+        self.apply(bgcolor, font, fcolor)
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -117,25 +116,23 @@ class NoteWidget(QPlainTextEdit):
             'width': self.width(),
             'height': self.height(),
             'bgcolor': self.palette().color(self.backgroundRole()).name(),
-            'font': self.font().toString()
+            'font': self.font().toString(),
+            'fcolor': self.palette().color(self.foregroundRole()).name(),
         }
 
-    def apply(self, bgcolor:str, font:str|QFont) -> None:
+    def apply(self, bgcolor:str, font:str|Font, fcolor:str) -> None:
         """ Apply the selected color and font to the note window. """
-        self.setStyleSheet('NoteWidget {background-color:' + bgcolor + ';}')
-        if isinstance(font, QFont):
-            self.setFont(font)
-        else:
-            _font = QFont()
-            _font.fromString(font)
-            self.setFont(_font)
+        self.setStyleSheet('NoteWidget {background:' + bgcolor + '; color:' + fcolor + ';}')
+        if isinstance(font, str):
+            font = Font(font)
+        self.setFont(font)
 
     @classmethod
-    def apply_to_all(cls, bgcolor:str, font:str|QFont) -> None:
+    def apply_to_all(cls, bgcolor:str, font:str|Font, fcolor:str) -> None:
         """ Apply the selected color and font to all notes. """
-        if DEBUG: print("DEBUG: NoteWidget::apply_to_all", bgcolor, font)
+        if DEBUG: print("DEBUG: NoteWidget::apply_to_all", bgcolor, font, fcolor)
         for note in cls.all.values():
-            note.apply(bgcolor, font)
+            note.apply(bgcolor, font, fcolor)
 
 
 class NoteApplication(QApplication):
@@ -191,7 +188,7 @@ class NoteApplication(QApplication):
             if note.isVisible():
                 break
         else:
-            if DEBUG: print("INFO : All notes are hidden, Exiting...")
+            if DEBUG: print("INFO : All notes are hidden. Exiting...")
             self.quit()
 
     def prefs_dialog(self, rowid:int) -> None:
@@ -208,10 +205,11 @@ class NoteApplication(QApplication):
         Args:
             rowid (int): The ID of the note for which preferences are being saved.
             preferences (tuple): Global preferences chosen in dialog. """
-        if DEBUG: print(f"DEBUG: NoteApplication::save_preferences rowid={rowid}; prefs={preferences}")
+        if DEBUG: print(f"DEBUG: NoteApplication::save_preferences", rowid, preferences)
         if not preferences[0]:
             self.db.save(NoteWidget.all[rowid].as_dict())
         self.db.save_preferences(preferences)
+
 
 if __name__ == '__main__':
     app = NoteApplication(sys.argv)

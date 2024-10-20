@@ -33,15 +33,16 @@ SQL = {
         id      INTEGER     PRIMARY KEY,
         checked INTEGER        NOT NULL,
         bgcolor TEXT,
-        font    TEXT);''',
+        font    TEXT,
+        fcolor  TEXT);''',
 
-    'pref_insert': '''INSERT INTO preferences(id, checked, bgcolor, font)
-        VALUES (0, 1, 'lemonchiffon', '');''',
+    'pref_insert': '''INSERT INTO preferences(id, checked, bgcolor, font, fcolor)
+        VALUES (0, 1, 'lemonchiffon', '', 'black');''',
 
-    'pref_get': 'SELECT checked, bgcolor, font FROM preferences WHERE id = 0;',
+    'pref_get': 'SELECT checked, bgcolor, font, fcolor FROM preferences WHERE id = 0;',
 
     'pref_update': '''UPDATE preferences
-        SET checked = ?, bgcolor = ?, font = ? WHERE id = 0;''',
+        SET checked = ?, bgcolor = ?, font = ?, fcolor = ? WHERE id = 0;''',
 }
 
 class DataBaseConnector(ABC):
