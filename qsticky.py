@@ -111,8 +111,35 @@ class NoteWidget(QPlainTextEdit):
         }
 
 
+class NoteApplication(QApplication):
+    """ Application class for note management. """
+    def __init__(self, *args, **kwargs) -> None:
+        """ Initialize the application. """
+        super().__init__(*args, **kwargs)
+        self.db = SQLiteConnector(DBPATH)
+
+    def start(self) -> None:
+        """ Show saved notes if found, if not create one. """
+        if DEBUG: print("DEBUG: NoteApplication::start")
+        if rows := self.db.retrieve():
+            for row in rows:
+                if DEBUG: print("      ", row)
+                NoteWidget(*row).show()
+        else:
+            self.new_note()
+
+    def new_note(self) -> None:
+        """ Create a new empty note window. """
+        if DEBUG: print("DEBUG: NoteApplication::new_note")
+        rowid = 0
+        while rowid in NoteWidget.all:
+            rowid += 1
+        NoteWidget(rowid).show()
+        self.db.save(NoteWidget(rowid).as_dict())
+
+
 if __name__ == '__main__':
-    app = QApplication([])
+    app = NoteApplication(sys.argv)
 
     path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
     translator = QTranslator(app)
@@ -121,6 +148,5 @@ if __name__ == '__main__':
     if translator.load(QLocale(), "qsticky", "_", ":/i18n"):
         app.installTranslator(translator)
 
-    note = NoteWidget(0)
-    note.show()
+    app.start()
     sys.exit(app.exec())
