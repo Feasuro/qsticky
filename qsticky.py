@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QApplication, QPlainTextEdit, QSizeGrip
 
 import resources
 from data import SQLiteConnector
+from preferences import PreferencesWidget
 
 DEBUG = os.getenv('DEBUG')
 DBPATH = os.getenv('DBPATH', default='resources/qsticky.db')
@@ -25,7 +26,7 @@ class NoteWidget(QPlainTextEdit):
         cls.all[rowid] = self
         return self
 
-    def __init__(self, rowid, text='', xpos=10, ypos=10, width=256, height=256, bgcolor='lemonchiffon', font=None, *args, **kwargs) -> None:
+    def __init__(self, rowid, text='', xpos=10, ypos=10, width=256, height=256, bgcolor='lemonchiffon', font='', *args, **kwargs) -> None:
         """ Initialize the note window. """
         if DEBUG: print("DEBUG: NoteWidget::__init__\n      ", rowid, text, xpos, ypos, width, height, bgcolor, font, *args, **kwargs)
         super().__init__(*args, **kwargs)
@@ -41,8 +42,6 @@ class NoteWidget(QPlainTextEdit):
     def setup_ui(self) -> None:
         """ Set up the UI for the note window. """
         # Window decorations
-        self.setWindowTitle('QSticky')
-        self.setWindowIcon(QIcon(':/icons/main'))
         self.setToolTip(self.tr('Drag with left mouse button.\nRight click to open context menu.'))
         self.setToolTipDuration(2000)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.ToolTip)
@@ -75,6 +74,7 @@ class NoteWidget(QPlainTextEdit):
         self.actions['new'].triggered.connect(NoteApplication.instance().new_note)
         self.actions['hide'].triggered.connect(lambda: self.hide() or NoteApplication.instance().quit_condition())
         self.actions['show'].triggered.connect(NoteApplication.instance().show_all)
+        self.actions['preferences'].triggered.connect(lambda: NoteApplication.instance().prefs_dialog(self.id))
         self.actions['delete'].triggered.connect(lambda: NoteApplication.instance().delete_note(self.id))
 
     def contextMenuEvent(self, event) -> None:
@@ -120,6 +120,11 @@ class NoteWidget(QPlainTextEdit):
             'font': self.font().toString()
         }
 
+    def apply(self, bgcolor:str, font:QFont) -> None:
+        """ Apply the selected color and font to the note window. """
+        self.setStyleSheet('NoteWidget {background-color:' + bgcolor + ';}')
+        self.setFont(font)
+
 
 class NoteApplication(QApplication):
     """ Application class for note management. """
@@ -128,6 +133,7 @@ class NoteApplication(QApplication):
         super().__init__(*args, **kwargs)
         self.setQuitOnLastWindowClosed(False)
         self.db = SQLiteConnector(DBPATH)
+        self.prefs = None
 
     def start(self) -> None:
         """ Show saved notes if found, if not create one. """
@@ -148,7 +154,7 @@ class NoteApplication(QApplication):
         NoteWidget(rowid).show()
         self.db.save(NoteWidget.all[rowid].as_dict())
 
-    def delete_note(self, rowid) -> None:
+    def delete_note(self, rowid:int) -> None:
         """ Delete note window and database record. """
         if DEBUG: print("DEBUG: NoteApplication::delete_note", rowid)
         if rowid in NoteWidget.all:
@@ -172,6 +178,11 @@ class NoteApplication(QApplication):
         else:
             if DEBUG: print("INFO : All notes are hidden, Exiting...")
             self.quit()
+
+    def prefs_dialog(self, rowid:int) -> None:
+        """ Open the preferences dialog for the specified note. """
+        self.prefs = PreferencesWidget(NoteWidget.all[rowid])
+        self.prefs.show()
 
 
 if __name__ == '__main__':
