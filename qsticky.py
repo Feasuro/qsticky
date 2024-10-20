@@ -4,12 +4,14 @@ import sys
 import os
 
 from PyQt6.QtCore import Qt, QTranslator, QLibraryInfo, QLocale
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QAction, QIcon, QFont
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit, QSizeGrip
 
 import resources
+from data import SQLiteConnector
 
 DEBUG = os.getenv('DEBUG')
+DBPATH = os.getenv('DBPATH', default='resources/qsticky.db')
 
 class NoteWidget(QPlainTextEdit):
     """ Note window """
@@ -30,6 +32,10 @@ class NoteWidget(QPlainTextEdit):
         self.id = rowid
         self.setGeometry(xpos, ypos, width, height)
         self.setPlainText(text)
+        self.setStyleSheet('NoteWidget {background-color:' + bgcolor + ';}')
+        _font = QFont()
+        if _font.fromString(font):
+            self.setFont(_font)
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -90,6 +96,19 @@ class NoteWidget(QPlainTextEdit):
         super().resizeEvent(event)
         self.grip.move(self.rect().right() - self.grip.width(),
                        self.rect().bottom() - self.grip.height())
+
+    def as_dict(self) -> dict:
+        """ Convert the note window to a dictionary. """
+        return {
+            'id': self.id,
+            'text': self.toPlainText(),
+            'xpos': self.x(),
+            'ypos': self.y(),
+            'width': self.width(),
+            'height': self.height(),
+            'bgcolor': self.palette().color(self.backgroundRole()).name(),
+            'font': self.font().toString()
+        }
 
 
 if __name__ == '__main__':
