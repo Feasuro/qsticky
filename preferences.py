@@ -10,12 +10,14 @@ DEBUG = os.getenv('DEBUG')
 class Font(QFont):
     def __init__(self, string:str, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.fromString(string)
+        if string:
+            self.fromString(string)
 
 
 class ColorButton(QPushButton):
     """ Color selection button. """
     style = 'background: {};'
+
     def __init__(self, color:str, *args, **kwargs) -> None:
         """ Initialize the color selection button.
 
@@ -36,6 +38,8 @@ class ColorButton(QPushButton):
 
 class FontButton(QPushButton):
     """ Font selection button. """
+    style = 'background: white;'
+
     def __init__(self, font:QFont, *args, **kwargs) -> None:
         """ Initialize the font selection button.
 
@@ -43,22 +47,23 @@ class FontButton(QPushButton):
             font (QFont): The current font. """
         super().__init__(*args, **kwargs)
         self.setFont(font)
-        self.setStyleSheet('background: white;')
+        self.setStyleSheet(self.style)
         self.setText(f"{font.family()} {font.styleName()} {font.pointSize()}")
         self.clicked.connect(self.pick_font)
 
     def pick_font(self) -> QFont:
         """ Dialog for font selection. """
-        _font, _ = QFontDialog(self).getFont()
-        if DEBUG: print("DEBUG: FontButton::pick_font", _font)
-        self.setFont(_font)
-        self.setText(f"{_font.family()} {_font.styleName()} {_font.pointSize()}")
-        return _font
+        font, _ = QFontDialog(self).getFont()
+        if DEBUG: print("DEBUG: FontButton::pick_font", font)
+        self.setFont(font)
+        self.setText(f"{font.family()} {font.styleName()} {font.pointSize()}")
+        return font
 
 
 class FontColorButton(ColorButton):
     """ Color selection button. """
     style = 'color: {}; font-weight: bold;'
+
     def __init__(self, color:str, *args, **kwargs) -> None:
         """ Initialize the font color selection button.
 
@@ -77,16 +82,16 @@ class PreferencesWidget(QDialog):
         if DEBUG: print(f'DEBUG: PreferencesWidget::__init__\n      ',
                         checked, global_bgcolor, global_font, global_fcolor, args, kwargs)
         super().__init__(*args, **kwargs)
-        if (_parent := self.parent()) is None:
+        if (parent := self.parent()) is None:
             raise RuntimeError("PreferencesWidget needs a parent NoteWidget")
         self.checked = checked
         self.global_check = QGroupBox(self.tr('Global settings'))
         self.btn_g_bgcolor = ColorButton(global_bgcolor)
         self.btn_g_font = FontButton(Font(global_font))
         self.btn_g_fcolor = FontColorButton(global_fcolor)
-        self.btn_bgcolor = ColorButton(_parent.palette().color(self.backgroundRole()).name())
-        self.btn_font = FontButton(_parent.font())
-        self.btn_fcolor = FontColorButton(_parent.palette().color(self.foregroundRole()).name())
+        self.btn_bgcolor = ColorButton(parent.preference[0])
+        self.btn_font = FontButton(Font(parent.preference[1]))
+        self.btn_fcolor = FontColorButton(parent.preference[2])
         self.ui_setup()
 
     def ui_setup(self) -> None:

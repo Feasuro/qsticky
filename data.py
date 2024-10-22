@@ -104,7 +104,7 @@ class SQLiteConnector(DataBaseConnector):
         if not self.execute_sql('pref_get').fetchone():
             self.execute_sql('pref_insert')
 
-    def execute_sql(self, argument: str, values:dict|tuple|int={}) -> sqlite3.Cursor:
+    def execute_sql(self, argument: str, values:dict|tuple|int={}) -> sqlite3.Cursor|None:
         """ Execute SQL statement on the database.
 
         Args:
@@ -113,7 +113,7 @@ class SQLiteConnector(DataBaseConnector):
                 Defaults to None.
 
         Returns:
-            bool: True if the SQL statement executed successfully, False otherwise.
+            sqlite3.Cursor: The cursor object with SQL query result.
 
         Raises:
             ValueError: If the provided argument is invalid. """

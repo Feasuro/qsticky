@@ -12,11 +12,13 @@ from data import SQLiteConnector
 from preferences import PreferencesWidget, Font
 
 DEBUG = os.getenv('DEBUG')
-DBPATH = os.getenv('DBPATH', default='resources/qsticky.db')
+db_path = os.path.join(os.path.dirname(__file__), 'resources/qsticky.db')
+DBPATH = os.getenv('DBPATH', default=db_path)
 
 class NoteWidget(QPlainTextEdit):
     """ Note window """
     all = {}
+    style = 'NoteWidget {{background: {}; color: {};}}'
 
     def __new__(cls, rowid, *args, **kwargs):
         """ Create a new instance of NoteWidget or return an existing one. """
@@ -35,7 +37,8 @@ class NoteWidget(QPlainTextEdit):
         self.id = rowid
         self.setGeometry(xpos, ypos, width, height)
         self.setPlainText(text)
-        self.apply(bgcolor, font, fcolor)
+        self.preference = (bgcolor, font, fcolor)
+        self.apply(*self.preference)
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -73,8 +76,8 @@ class NoteWidget(QPlainTextEdit):
         self.actions['new'].triggered.connect(NoteApplication.instance().new_note)
         self.actions['hide'].triggered.connect(lambda: self.hide() or NoteApplication.instance().quit_condition())
         self.actions['show'].triggered.connect(NoteApplication.instance().show_all)
-        self.actions['preferences'].triggered.connect(lambda: NoteApplication.instance().prefs_dialog(self.id))
-        self.actions['delete'].triggered.connect(lambda: NoteApplication.instance().delete_note(self.id))
+        self.actions['preferences'].triggered.connect(lambda: NoteApplication.instance().prefs_dialog(self))
+        self.actions['delete'].triggered.connect(lambda: NoteApplication.instance().delete_note(self))
 
     def contextMenuEvent(self, event) -> None:
         """ Add custom actions to default context menu. """
@@ -122,7 +125,7 @@ class NoteWidget(QPlainTextEdit):
 
     def apply(self, bgcolor:str, font:str|Font, fcolor:str) -> None:
         """ Apply the selected color and font to the note window. """
-        self.setStyleSheet('NoteWidget {background:' + bgcolor + '; color:' + fcolor + ';}')
+        self.setStyleSheet(self.style.format(bgcolor, fcolor))
         if isinstance(font, str):
             font = Font(font)
         self.setFont(font)
@@ -166,13 +169,12 @@ class NoteApplication(QApplication):
         NoteWidget(rowid).show()
         self.db.save(NoteWidget.all[rowid].as_dict())
 
-    def delete_note(self, rowid:int) -> None:
+    def delete_note(self, note:NoteWidget) -> None:
         """ Delete note window and database record. """
-        if DEBUG: print("DEBUG: NoteApplication::delete_note", rowid)
-        if rowid in NoteWidget.all:
-            NoteWidget.all[rowid].close()
-            self.db.delete(rowid)
-            del NoteWidget.all[rowid]
+        if DEBUG: print("DEBUG: NoteApplication::delete_note ", note.id)
+        note.close()
+        self.db.delete(note.id)
+        del note
         self.quit_condition()
 
     def show_all(self) -> None:
@@ -191,23 +193,28 @@ class NoteApplication(QApplication):
             if DEBUG: print("INFO : All notes are hidden. Exiting...")
             self.quit()
 
-    def prefs_dialog(self, rowid:int) -> None:
+    def prefs_dialog(self, note:NoteWidget) -> None:
         """ Open the preferences dialog for the specified note. """
         preferences = self.db.get_preferences()
-        if DEBUG: print(f"DEBUG: NoteApplication::prefs_dialog rowid={rowid}; prefs={preferences}")
-        self.pref_widget = PreferencesWidget(*preferences, NoteWidget.all[rowid])
-        self.pref_widget.save_signal.connect(lambda prefs: self.save_preferences(rowid, prefs))
+        if DEBUG: print(f"DEBUG: NoteApplication::prefs_dialog prefs={preferences}")
+        self.pref_widget = PreferencesWidget(*preferences, note)
+        self.pref_widget.save_signal.connect(lambda prefs: self.save_preferences(note, prefs))
         self.pref_widget.show()
 
-    def save_preferences(self, rowid:int, preferences:tuple) -> None:
+    def save_preferences(self, note:NoteWidget, preferences:tuple) -> None:
         """ Save chosen preferences in the database.
 
         Args:
             rowid (int): The ID of the note for which preferences are being saved.
             preferences (tuple): Global preferences chosen in dialog. """
-        if DEBUG: print(f"DEBUG: NoteApplication::save_preferences", rowid, preferences)
+        if DEBUG: print(f"DEBUG: NoteApplication::save_preferences", preferences)
         if not preferences[0]:
-            self.db.save(NoteWidget.all[rowid].as_dict())
+            self.db.save(note.as_dict())
+            note.preference = (
+                note.palette().color(note.backgroundRole()).name(),
+                note.font().toString(),
+                note.palette().color(note.foregroundRole()).name()
+            )
         self.db.save_preferences(preferences)
 
 
