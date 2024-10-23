@@ -18,6 +18,7 @@ DBPATH = os.getenv('DBPATH', default=db_path)
 class NoteWidget(QPlainTextEdit):
     """ Note window """
     all = {}
+    db = SQLiteConnector(DBPATH)
     style = 'NoteWidget {{background: {}; color: {};}}'
 
     def __new__(cls, rowid, *args, **kwargs):
@@ -75,9 +76,9 @@ class NoteWidget(QPlainTextEdit):
         # Signals
         self.actions['new'].triggered.connect(NoteApplication.instance().new_note)
         self.actions['hide'].triggered.connect(lambda: self.hide() or NoteApplication.instance().quit_condition())
-        self.actions['show'].triggered.connect(NoteApplication.instance().show_all)
-        self.actions['preferences'].triggered.connect(lambda: NoteApplication.instance().prefs_dialog(self))
-        self.actions['delete'].triggered.connect(lambda: NoteApplication.instance().delete_note(self))
+        self.actions['show'].triggered.connect(self.show_all)
+        self.actions['preferences'].triggered.connect(self.prefs_dialog)
+        self.actions['delete'].triggered.connect(self.delete)
 
     def contextMenuEvent(self, event) -> None:
         """ Add custom actions to default context menu. """
@@ -107,7 +108,7 @@ class NoteWidget(QPlainTextEdit):
     def focusOutEvent(self, event) -> None:
         """ Save the note text and position when focus is lost. """
         super().focusOutEvent(event)
-        NoteApplication.instance().db.update(self.as_dict())
+        self.db.update(self.as_dict())
 
     def as_dict(self) -> dict:
         """ Convert the note window to a dictionary. """
@@ -137,6 +138,45 @@ class NoteWidget(QPlainTextEdit):
         for note in cls.all.values():
             note.apply(bgcolor, font, fcolor)
 
+    @classmethod
+    def show_all(cls) -> None:
+        """ Show all hidden note windows. """
+        if DEBUG: print("DEBUG: NoteWidget::show_all")
+        for note in cls.all.values():
+            if not note.isVisible():
+                note.show()
+
+    def delete(self) -> None:
+        """ Delete note window and database record. """
+        if DEBUG: print("DEBUG: NoteWidget::delete", self.id)
+        self.close()
+        self.db.delete(self.id)
+        del self
+        NoteApplication.instance().quit_condition()
+
+    def prefs_dialog(self) -> None:
+        """ Open the preferences dialog for the specified note. """
+        global_pref = self.db.get_preferences()
+        if DEBUG: print(f"DEBUG: NoteWidget::prefs_dialog prefs={global_pref}")
+        self.pref_widget = PreferencesWidget(*preferences, self)
+        self.pref_widget.save_signal.connect(self.save_preferences)
+        self.pref_widget.show()
+
+    def save_preferences(self, preferences:tuple) -> None:
+        """ Save chosen preferences in the database.
+
+        Args:
+            preferences (tuple): Global preferences chosen in dialog. """
+        if DEBUG: print(f"DEBUG: NoteWidget::save_preferences", preferences)
+        if not preferences[0]:
+            self.db.save(self.as_dict())
+            self.preference = (
+                self.palette().color(note.backgroundRole()).name(),
+                self.font().toString(),
+                self.palette().color(note.foregroundRole()).name()
+            )
+        self.db.save_preferences(preferences)
+
 
 class NoteApplication(QApplication):
     """ Application class for note management. """
@@ -144,19 +184,29 @@ class NoteApplication(QApplication):
         """ Initialize the application. """
         super().__init__(*args, **kwargs)
         self.setQuitOnLastWindowClosed(False)
-        self.db = SQLiteConnector(DBPATH)
-        self.pref_widget = None
+        self.translate()
+
+    def translate(self) -> None:
+        """ Load translations of application's strings. """
+        if DEBUG: print("DEBUG: NoteApplication::translate")
+        path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+        translator = QTranslator(self)
+        if translator.load(QLocale(), "qtbase", "_", path):
+            self.installTranslator(translator)
+        translator = QTranslator(self)
+        if translator.load(QLocale(), "qsticky", "_", ":/i18n"):
+            self.installTranslator(translator)
 
     def start(self) -> None:
         """ Show saved notes if found, if not create one. """
         if DEBUG: print("DEBUG: NoteApplication::start")
-        if rows := self.db.retrieve():
+        if rows := NoteWidget.db.retrieve():
             for row in rows:
                 if DEBUG: print("      ", row)
                 NoteWidget(*row).show()
         else:
             self.new_note()
-        pref = self.db.get_preferences()
+        pref = NoteWidget.db.get_preferences()
         if pref[0]:
             NoteWidget.apply_to_all(*pref[1:])
 
@@ -167,22 +217,7 @@ class NoteApplication(QApplication):
         while rowid in NoteWidget.all:
             rowid += 1
         NoteWidget(rowid).show()
-        self.db.save(NoteWidget.all[rowid].as_dict())
-
-    def delete_note(self, note:NoteWidget) -> None:
-        """ Delete note window and database record. """
-        if DEBUG: print("DEBUG: NoteApplication::delete_note ", note.id)
-        note.close()
-        self.db.delete(note.id)
-        del note
-        self.quit_condition()
-
-    def show_all(self) -> None:
-        """ Show all hidden note windows. """
-        if DEBUG: print("DEBUG: NoteApplication::show_all")
-        for note in NoteWidget.all.values():
-            if not note.isVisible():
-                note.show()
+        NoteWidget.db.save(NoteWidget.all[rowid].as_dict())
 
     def quit_condition(self) -> None:
         """ Check if any note window is visible, exit otherwise. """
@@ -193,41 +228,8 @@ class NoteApplication(QApplication):
             if DEBUG: print("INFO : All notes are hidden. Exiting...")
             self.quit()
 
-    def prefs_dialog(self, note:NoteWidget) -> None:
-        """ Open the preferences dialog for the specified note. """
-        preferences = self.db.get_preferences()
-        if DEBUG: print(f"DEBUG: NoteApplication::prefs_dialog prefs={preferences}")
-        self.pref_widget = PreferencesWidget(*preferences, note)
-        self.pref_widget.save_signal.connect(lambda prefs: self.save_preferences(note, prefs))
-        self.pref_widget.show()
-
-    def save_preferences(self, note:NoteWidget, preferences:tuple) -> None:
-        """ Save chosen preferences in the database.
-
-        Args:
-            rowid (int): The ID of the note for which preferences are being saved.
-            preferences (tuple): Global preferences chosen in dialog. """
-        if DEBUG: print(f"DEBUG: NoteApplication::save_preferences", preferences)
-        if not preferences[0]:
-            self.db.save(note.as_dict())
-            note.preference = (
-                note.palette().color(note.backgroundRole()).name(),
-                note.font().toString(),
-                note.palette().color(note.foregroundRole()).name()
-            )
-        self.db.save_preferences(preferences)
-
 
 if __name__ == '__main__':
     app = NoteApplication(sys.argv)
-
-    path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
-    translator = QTranslator(app)
-    if translator.load(QLocale(), "qtbase", "_", path):
-        app.installTranslator(translator)
-    translator = QTranslator(app)
-    if translator.load(QLocale(), "qsticky", "_", ":/i18n"):
-        app.installTranslator(translator)
-
     app.start()
     sys.exit(app.exec())
