@@ -18,22 +18,27 @@ DBPATH = os.getenv('DBPATH', default=db_path)
 class NoteWidget(QPlainTextEdit):
     """ Note window """
     all = {}
-    db = SQLiteConnector(DBPATH)
+    db = None
     style = 'NoteWidget {{background: {}; color: {};}}'
 
-    def __new__(cls, rowid, *args, **kwargs):
+    def __new__(cls, rowid=None, *args, **kwargs):
         """ Create a new instance of NoteWidget or return an existing one. """
-        if rowid in cls.all:
-            return cls.all[rowid]
-        self = super().__new__(cls)
-        cls.all[rowid] = self
-        return self
+        if rowid is None:
+            rowid = 0
+            while rowid in cls.all:
+                rowid += 1
+        return cls.all.setdefault(rowid, super().__new__(cls))
 
-    def __init__(self, rowid, text='', xpos=10, ypos=10, width=256, height=256,
+    def __init__(self, rowid=None, text='', xpos=10, ypos=10, width=256, height=256,
                  bgcolor='lemonchiffon', font='', fcolor='black', *args, **kwargs) -> None:
         """ Initialize the note window. """
         if DEBUG: print("DEBUG: NoteWidget::__init__\n      ",rowid, text, xpos, ypos,
                         width, height, bgcolor, font, fcolor, *args, **kwargs)
+        if rowid is None:
+            for id, note in self.all.items():
+                if note is self:
+                    rowid = id
+                    break
         super().__init__(*args, **kwargs)
         self.id = rowid
         self.setGeometry(xpos, ypos, width, height)
@@ -74,8 +79,8 @@ class NoteWidget(QPlainTextEdit):
         for name, action in self.actions.items():
             action.setIcon(icons[name])
         # Signals
-        self.actions['new'].triggered.connect(NoteApplication.instance().new_note)
-        self.actions['hide'].triggered.connect(lambda: self.hide() or NoteApplication.instance().quit_condition())
+        #self.actions['new'].triggered.connect(NoteApplication.instance().new_note)
+        self.actions['hide'].triggered.connect(self.close)
         self.actions['show'].triggered.connect(self.show_all)
         self.actions['preferences'].triggered.connect(self.prefs_dialog)
         self.actions['delete'].triggered.connect(self.delete)
@@ -158,7 +163,7 @@ class NoteWidget(QPlainTextEdit):
         """ Open the preferences dialog for the specified note. """
         global_pref = self.db.get_preferences()
         if DEBUG: print(f"DEBUG: NoteWidget::prefs_dialog prefs={global_pref}")
-        self.pref_widget = PreferencesWidget(*preferences, self)
+        self.pref_widget = PreferencesWidget(*global_pref, self)
         self.pref_widget.save_signal.connect(self.save_preferences)
         self.pref_widget.show()
 
@@ -171,9 +176,9 @@ class NoteWidget(QPlainTextEdit):
         if not preferences[0]:
             self.db.save(self.as_dict())
             self.preference = (
-                self.palette().color(note.backgroundRole()).name(),
+                self.palette().color(self.backgroundRole()).name(),
                 self.font().toString(),
-                self.palette().color(note.foregroundRole()).name()
+                self.palette().color(self.foregroundRole()).name()
             )
         self.db.save_preferences(preferences)
 
@@ -230,6 +235,21 @@ class NoteApplication(QApplication):
 
 
 if __name__ == '__main__':
-    app = NoteApplication(sys.argv)
-    app.start()
+    app = QApplication(sys.argv)
+
+    path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    translator = QTranslator(app)
+    if translator.load(QLocale(), "qtbase", "_", path):
+        app.installTranslator(translator)
+    translator = QTranslator(app)
+    if translator.load(QLocale(), "qsticky", "_", ":/i18n"):
+        app.installTranslator(translator)
+
+    NoteWidget.db = SQLiteConnector(DBPATH)
+    for row in NoteWidget.db.retrieve():
+        NoteWidget(*row).show()
+    pref = NoteWidget.db.get_preferences()
+    if pref[0]:
+        NoteWidget.apply_to_all(*pref[1:])
+
     sys.exit(app.exec())

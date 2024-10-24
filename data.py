@@ -98,11 +98,16 @@ class SQLiteConnector(DataBaseConnector):
 
         Args:
             db (str): The path of the SQLite database file. """
-        self.conn = sqlite3.connect(db)
-        self.execute_sql('init')
-        self.execute_sql('pref_init')
-        if not self.execute_sql('pref_get').fetchone():
-            self.execute_sql('pref_insert')
+        try:
+            self.conn = sqlite3.connect(db)
+        except sqlite3.Error as e:
+            if DEBUG: print(f"ERROR: Connecting to SQLite database: {e}")
+            QMessageBox.critical(None, "Error", f"Error occurred while connecting to SQLite database: {e}")
+        else:
+            self.execute_sql('init')
+            self.execute_sql('pref_init')
+#            if not self.execute_sql('pref_get').fetchone():
+#                self.execute_sql('pref_insert')
 
     def execute_sql(self, argument: str, values:dict|tuple|int={}) -> sqlite3.Cursor|None:
         """ Execute SQL statement on the database.
