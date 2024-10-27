@@ -1,11 +1,11 @@
 import os
 
+from PyQt6.QtCore import qDebug
 from PyQt6.QtCore import pyqtSignal as Signal
 from PyQt6.QtGui import QIcon, QFont
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QGroupBox, QDialogButtonBox,
                              QPushButton, QColorDialog, QFontDialog)
 
-DEBUG = os.getenv('DEBUG')
 
 class Font(QFont):
     def __init__(self, string:str, *args, **kwargs) -> None:
@@ -31,7 +31,7 @@ class ColorButton(QPushButton):
     def pick_color(self) -> str:
         """ Dialog for color selection. """
         self.color = QColorDialog(self).getColor().name()
-        if DEBUG: print("DEBUG: ColorButton::pick_color", self.color, type(self.color))
+        qDebug(f"DEBUG: ColorButton::pick_color; {self.color}, {type(self.color)}")
         self.setStyleSheet(self.style.format(self.color))
         return self.color
 
@@ -54,7 +54,7 @@ class FontButton(QPushButton):
     def pick_font(self) -> QFont:
         """ Dialog for font selection. """
         font, _ = QFontDialog(self).getFont()
-        if DEBUG: print("DEBUG: FontButton::pick_font", font)
+        qDebug(f"DEBUG: FontButton::pick_font, {font}")
         self.setFont(font)
         self.setText(f"{font.family()} {font.styleName()} {font.pointSize()}")
         return font
@@ -75,20 +75,22 @@ class FontColorButton(ColorButton):
 
 class PreferencesWidget(QDialog):
     """ Widget for selection of the app preferences. """
-    save_signal = Signal(tuple)
+    save_signal = Signal(dict)
     
-    def __init__(self, checked:int, global_bgcolor:str, global_font:str, global_fcolor:str, *args, **kwargs) -> None:
-        """ Initialize the preferences dialog. """
-        if DEBUG: print(f'DEBUG: PreferencesWidget::__init__\n      ',
-                        checked, global_bgcolor, global_font, global_fcolor, args, kwargs)
+    def __init__(self, global_preference:tuple, *args, **kwargs) -> None:
+        """ Initialize the preferences dialog.
+        
+        Args:
+            global_preference (tuple): Tuple of checked, bgcolor, font, fcolor. """
+        qDebug(f'DEBUG: PreferencesWidget::__init__\n      {global_preference}, {args}, {kwargs}')
         super().__init__(*args, **kwargs)
         if (parent := self.parent()) is None:
-            raise RuntimeError("PreferencesWidget needs a parent NoteWidget")
-        self.checked = checked
+            raise RuntimeWarning("PreferencesWidget needs a parent NoteWidget")
+        self.checked = bool(global_preference[0])
         self.global_check = QGroupBox(self.tr('Global settings'))
-        self.btn_g_bgcolor = ColorButton(global_bgcolor)
-        self.btn_g_font = FontButton(Font(global_font))
-        self.btn_g_fcolor = FontColorButton(global_fcolor)
+        self.btn_g_bgcolor = ColorButton(global_preference[1])
+        self.btn_g_font = FontButton(Font(global_preference[2]))
+        self.btn_g_fcolor = FontColorButton(global_preference[3])
         self.btn_bgcolor = ColorButton(parent.preference[0])
         self.btn_font = FontButton(Font(parent.preference[1]))
         self.btn_fcolor = FontColorButton(parent.preference[2])
@@ -120,14 +122,14 @@ class PreferencesWidget(QDialog):
         layout.addWidget(group)     
         layout.addWidget(btns)
         # Signals
-        group.setDisabled(bool(self.checked))
+        group.setDisabled(self.checked)
         self.global_check.setCheckable(True)
-        self.global_check.setChecked(bool(self.checked))
+        self.global_check.setChecked(self.checked)
         self.global_check.toggled.connect(group.setDisabled)
 
     def apply(self) -> None:
         """ Apply selection. """
-        if DEBUG: print("DEBUG: PreferencesWidget::apply")
+        qDebug("DEBUG: PreferencesWidget::apply")
         if self.global_check.isChecked():
             self.parent().apply_to_all(self.btn_g_bgcolor.color, self.btn_g_font.font(),
                                        self.btn_g_fcolor.color)
@@ -137,6 +139,10 @@ class PreferencesWidget(QDialog):
     def save(self) -> None:
         """ Save selection. """
         self.apply()
-        self.save_signal.emit((int(self.global_check.isChecked()), self.btn_g_bgcolor.color,
-                               self.btn_g_font.font().toString(), self.btn_g_fcolor.color))
+        self.save_signal.emit({
+            'checked': int(self.global_check.isChecked()),
+            'bgcolor': self.btn_g_bgcolor.color,
+            'font': self.btn_g_font.font().toString(),
+            'fcolor': self.btn_g_fcolor.color
+            })
         self.close()
