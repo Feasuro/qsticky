@@ -1,5 +1,4 @@
-import os
-
+""" Defines dialog widget that presents the user with controls for selecting colors and font. """
 from PyQt6.QtCore import qDebug
 from PyQt6.QtCore import pyqtSignal as Signal
 from PyQt6.QtGui import QIcon, QFont

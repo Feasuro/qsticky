@@ -1,11 +1,10 @@
-import os
+""" Defines helper classes for storing and retrieving NoteWidget state information. """
 import sqlite3
 from abc import ABC, abstractmethod
 
 from PyQt6.QtCore import qCritical, qInfo
 from PyQt6.QtWidgets import QMessageBox
 
-DEFAULTS = ('', 10, 10, 256, 256, 'lemonchiffon', '', 'black')
 SQL = {
     'init': '''CREATE TABLE IF NOT EXISTS notes (
         id      INTEGER     PRIMARY KEY,
