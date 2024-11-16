@@ -1,8 +1,7 @@
 qsticky.db
+.vscode/
 
 # Byte-compiled / optimized / DLL files
-tests/
-.vscode/
 __pycache__/
 *.py[cod]
 *$py.class

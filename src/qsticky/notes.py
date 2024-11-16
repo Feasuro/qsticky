@@ -4,9 +4,9 @@ from PyQt6.QtCore import pyqtSignal as Signal
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit, QSizeGrip
 
-import resources
-from data import DataBaseConnector
-from preferences import PreferencesWidget, Font
+import qsticky.resources
+from qsticky.data import DataBaseConnector
+from qsticky.preferences import PreferencesWidget, Font
 
 DEFAULTS = ('', 10, 10, 256, 256, 'lemonchiffon', '', 'black')
 
@@ -148,7 +148,7 @@ class NoteWidget(QPlainTextEdit):
     def new_note(cls) -> 'NoteWidget':
         """ Create a new empty note window. """
         qDebug("DEBUG: NoteWidget::new_note")
-        new_rowid = max(cls.all, default=0)+1
+        new_rowid = 1 + max(cls.all, default=0)
         ## Can manipulate new row-id calculation here, like:
         #new_rowid = 0
         #while new_rowid in cls.all:
