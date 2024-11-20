@@ -5,7 +5,8 @@ from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit, QSizeGrip
 
 import qsticky.resources
-from qsticky.data import DataBaseConnector
+from qsticky import __version__
+from qsticky.data import NoStorage
 from qsticky.preferences import PreferencesWidget, Font
 
 DEFAULTS = ('', 10, 10, 256, 256, 'lemonchiffon', '', 'black')
@@ -15,10 +16,10 @@ class NoteWidget(QPlainTextEdit):
 
     Class Attributes:
         all (dict): Dictionary mapping ids to notes
-        db (data.DataBaseConnector): Database tasks helper object.
+        db (data.StorageConnector): Storage tasks helper object.
         style (string): QSS style sheet string for widgets. """
     all = {}
-    db = None
+    db = NoStorage()
     style = 'NoteWidget {{background: {}; color: {};}}'
     quit_signal = Signal()
 
@@ -199,6 +200,8 @@ class NoteApplication(QApplication):
     def __init__(self, *args, **kwargs) -> None:
         """ Initialize the application. """
         super().__init__(*args, **kwargs)
+        self.setApplicationName('Qsticky')
+        self.setApplicationVersion(qsticky.__version__)
         self.setQuitOnLastWindowClosed(False)
         self.translate()
 
