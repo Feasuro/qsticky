@@ -1,5 +1,4 @@
 """ Subpackage with classes that perform tasks related to storing notes. """
-from .data import * # deprecated module
 from .abstract import *
 from .sqlite import *
 try:
