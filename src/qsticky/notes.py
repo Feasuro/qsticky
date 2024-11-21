@@ -203,11 +203,11 @@ class NoteApplication(QApplication):
         self.setApplicationName('Qsticky')
         self.setApplicationVersion(qsticky.__version__)
         self.setQuitOnLastWindowClosed(False)
-        self.translate()
+        self.translation()
 
-    def translate(self) -> None:
+    def translation(self) -> None:
         """ Load translations of application's strings. """
-        qDebug("DEBUG: NoteApplication::translate")
+        qDebug("DEBUG: NoteApplication::translation")
         path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
         translator = QTranslator(self)
         if translator.load(QLocale(), "qtbase", "_", path):

@@ -1,6 +1,7 @@
 """ Defines helper classes for storing and retrieving NoteWidget state information. """
 from abc import ABC, abstractmethod
 from functools import wraps
+from contextlib import closing
 
 from PyQt6.QtCore import qCritical, qInfo
 from PyQt6.QtWidgets import QMessageBox
@@ -113,22 +114,28 @@ class DataBaseConnector(StorageConnector):
         raise NotImplementedError
 
     def retrieve(self) -> list:
-        return self.execute_sql('retrieve').fetchall()
+        with closing(self.execute_sql('retrieve')) as cursor:
+            return cursor.fetchall()
 
     def save(self, note: dict) -> int:
-        return self.execute_sql('upsert', note).lastrowid
+        with closing(self.execute_sql('upsert', note)) as cursor:
+            return cursor.lastrowid
 
     def update(self, note: dict) -> bool:
-        return bool(self.execute_sql('update', note))
+        with closing(self.execute_sql('update', note)) as cursor:
+            return bool(cursor)
 
     def delete(self, rowid: int) -> bool:
-        return bool(self.execute_sql('delete', rowid))
+        with closing(self.execute_sql('delete', rowid)) as cursor:
+            return bool(cursor)
 
     def get_preferences(self) -> tuple:
-        return self.execute_sql('pref_get').fetchone()
+        with closing(self.execute_sql('pref_get')) as cursor:
+            return cursor.fetchone()
 
     def save_preferences(self, preferences:dict) -> bool:
-        return bool(self.execute_sql('pref_upsert', preferences))
+        with closing(self.execute_sql('pref_upsert', preferences)) as cursor:
+            return bool(cursor)
 
 
 class CatchError:

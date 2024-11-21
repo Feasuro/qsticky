@@ -3,7 +3,9 @@ import sys
 import os
 
 from qsticky.notes import NoteApplication, NoteWidget
-from qsticky.data import SQLiteConnector
+from qsticky.data import NoStorage, SQLiteConnector, has_postgre
+if has_postgre:
+    from qsticky.data import PostgreSQLConnector
 
 dir_path = os.getenv('XDG_DATA_HOME', default=os.path.expanduser('~/.local/share'))
 

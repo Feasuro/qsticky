@@ -65,13 +65,12 @@ class PostgreSQLConnector(DataBaseConnector):
             password=password
         )
 
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT version();")
-        query = cursor.fetchone()
+        with self.conn.cursor() as cursor:
+            cursor.execute("SELECT version();")
+            query = cursor.fetchone()
         qInfo(f"INFO : Connected to - {query[0]}")
         qDebug("DEBUG: PostgreSQL server information:")
         qDebug(str(self.conn.get_dsn_parameters()))
-        cursor.close()
 
     @CatchError(psycopg2.Error)
     def execute_sql(self, statement: str, values:dict|int={}) -> psycopg2.extensions.cursor:
