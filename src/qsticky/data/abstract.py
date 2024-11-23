@@ -74,7 +74,7 @@ class StorageConnector(ABC):
 class NoStorage(StorageConnector):
     """ Defines a dummy connector for no storage functionality. """
     def __init__(self) -> None:
-        pass
+        qInfo(f'INFO : NoStorage::Running in memory')
 
     def retrieve(self) -> list[tuple]:
         return []
@@ -147,11 +147,9 @@ class CatchError:
         @wraps(func)
         def wrapper(*args, **kwargs):
             try:
-                result = func(*args, **kwargs)
-                return result
+                return func(*args, **kwargs)
             except self.error as e:
                 qCritical(f"ERROR: {func.__name__} failed while executing {args}:\n{str(e)}")
                 QMessageBox.critical(None, "Error", f"An error occurred in {func.__name__} function executing statement {args}:\n{str(e)}")
                 return None
-            return result
         return wrapper

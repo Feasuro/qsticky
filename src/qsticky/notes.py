@@ -33,7 +33,7 @@ class NoteWidget(QPlainTextEdit):
         Args:
             row (tuple): Tuple of id, text, xpos, ypos, width, height, bgcolor, font,
                 fcolor. A database record of note. """
-        qDebug(f"DEBUG: NoteWidget::__init__\n      {row}, {args}, {kwargs}")
+        qDebug(f"DEBUG: NoteWidget::__init__{row}")
         self.id = row[0]
         super().__init__(row[1], *args, **kwargs)
         self.setGeometry(*row[2:6])
@@ -207,7 +207,6 @@ class NoteApplication(QApplication):
 
     def translation(self) -> None:
         """ Load translations of application's strings. """
-        qDebug("DEBUG: NoteApplication::translation")
         path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
         translator = QTranslator(self)
         if translator.load(QLocale(), "qtbase", "_", path):
@@ -221,7 +220,6 @@ class NoteApplication(QApplication):
         qDebug("DEBUG: NoteApplication::start")
         if rows := NoteWidget.db.retrieve():
             for row in rows:
-                qDebug(f"      {row}")
                 note = NoteWidget(row)
                 note.quit_signal.connect(self.quit_condition)
                 note.show()

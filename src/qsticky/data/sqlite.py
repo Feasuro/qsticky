@@ -2,7 +2,7 @@ import sqlite3
 
 from PyQt6.QtCore import qInfo
 
-from qsticky.data import DataBaseConnector, CatchError
+from qsticky.data.abstract import DataBaseConnector, CatchError
 
 
 class SQLiteConnector(DataBaseConnector):
@@ -54,7 +54,9 @@ class SQLiteConnector(DataBaseConnector):
         Args:
             db (str): The path of the SQLite database file. """
         self.conn = sqlite3.connect(db)
-        qInfo(f'INFO : Connected to - {db}')
+        qInfo(f'INFO : SQLiteConnector::Connected to - {db}')
+        self.execute_sql('init')
+        self.execute_sql('pref_init')
 
     @CatchError(sqlite3.Error)
     def execute_sql(self, statement: str, values:dict|int={}) -> sqlite3.Cursor:
@@ -64,7 +66,5 @@ class SQLiteConnector(DataBaseConnector):
             values = {'id': values} # convert to dict to pass as statement value
         qInfo(f"INFO : Executing SQL: '{statement}' with values: {values}")
 
-        cursor = self.conn.cursor()
-        cursor.execute(self.SQL[statement], values)
-        self.conn.commit()
-        return cursor
+        with self.conn as connection:
+            return connection.execute(self.SQL[statement], values)

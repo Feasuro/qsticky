@@ -2,7 +2,7 @@ import psycopg2
 
 from PyQt6.QtCore import qInfo, qDebug
 
-from qsticky.data import DataBaseConnector, CatchError
+from qsticky.data.abstract import DataBaseConnector, CatchError
 
 
 class PostgreSQLConnector(DataBaseConnector):
@@ -68,9 +68,12 @@ class PostgreSQLConnector(DataBaseConnector):
         with self.conn.cursor() as cursor:
             cursor.execute("SELECT version();")
             query = cursor.fetchone()
-        qInfo(f"INFO : Connected to - {query[0]}")
+        qInfo(f"INFO : PostgreSQLConnector::Connected to - {query[0]}")
         qDebug("DEBUG: PostgreSQL server information:")
         qDebug(str(self.conn.get_dsn_parameters()))
+        self.execute_sql('init')
+        self.execute_sql('pref_init')
+
 
     @CatchError(psycopg2.Error)
     def execute_sql(self, statement: str, values:dict|int={}) -> psycopg2.extensions.cursor:
