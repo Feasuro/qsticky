@@ -1,12 +1,14 @@
 """ Application entry point module, parses commandline input. """
 import sys
 import os
+import logging
 
-from PyQt6.QtCore import QCommandLineParser, QCommandLineOption, qDebug, qWarning
+from PyQt6.QtCore import QCommandLineParser, QCommandLineOption
 
 import qsticky.data as data
 from qsticky.notes import NoteApplication, NoteWidget
 
+logger = logging.getLogger(__name__)
 tr = lambda string: NoteApplication.translate('main', string)
 
 def parse_args(app: NoteApplication) -> data.StorageConnector:
@@ -17,12 +19,22 @@ def parse_args(app: NoteApplication) -> data.StorageConnector:
 
     Returns:
         data.StorageConnector: Connection helper object."""
+
     # Set up the parser, description and default options
     parser = QCommandLineParser()
     parser.setApplicationDescription("Show sticky notes on your desktop.")
     parser.addHelpOption()
     parser.addVersionOption()
+
     # Add custom command line options
+    parser.addOption(QCommandLineOption(
+        ['V', 'verbose'],
+        tr('Print additional info.')
+    ))
+    parser.addOption(QCommandLineOption(
+        ['D', 'debug'],
+        tr('Even more verbose output.'),
+    ))
     parser.addOption(QCommandLineOption(
         ['t', 'type'],
         tr('The database engine to connect with.\ndefault: sqlite'),
@@ -67,24 +79,39 @@ def parse_args(app: NoteApplication) -> data.StorageConnector:
 
     # Process the command-line arguments
     parser.process(app)
-    qDebug(f'''
-DEBUG: {parser})
-###    Specified: {parser.optionNames()}
-###    type = {parser.value("type")} {type(parser.value("type"))}
-###    sqlite-db = {parser.value("sqlite-db")} {type(parser.value("sqlite-db"))}
-###    host = {parser.value("host")} {type(parser.value("host"))}
-###    port = {parser.value("port")} {type(parser.value("port"))}
-###    dbname = {parser.value("dbname")} {type(parser.value("dbname"))}
-###    user = {parser.value("user")} {type(parser.value("user"))}
-###    password = {parser.value("password")} {type(parser.value("password"))}'''
-)
+
+    # Set up logging levels based on command-line options
+    if parser.isSet('debug'):
+        logging.basicConfig(level=logging.DEBUG)
+    elif parser.isSet('verbose'):
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig()
+    logger.debug(f'''{type(parser).__name__}::Specified: {parser.optionNames()}
+###    type = {parser.value("type")}'''
+    )
     # Choose database object to return
     match parser.value('type'):
         case 'sqlite':
+            for opt in ['host', 'port', 'dbname', 'user', 'password']:
+                if parser.isSet(opt):
+                    logger.warning(f'{type(parser).__name__}::Ignoring option --{opt} {parser.value(opt)}')
+            logger.debug(f'''{type(parser).__name__}::
+###    sqlite-db = {parser.value("sqlite-db")}'''
+            )
             return data.SQLiteConnector(parser.value('sqlite-db'))
         case 'postgre':
+            if parser.isSet('f'):
+                logger.warning(f'{type(parser).__name__}::Ignoring option --sqlite-db {parser.value('f')}')
+            logger.debug(f'''{type(parser).__name__}::
+###    host = {parser.value("host")}
+###    port = {parser.value("port")}
+###    dbname = {parser.value("dbname")}
+###    user = {parser.value("user")}
+###    password = {parser.value("password")}'''
+            )
             if not data.has_postgre:
-                qWarning('WARNING: PostgreSQL database driver is not installed.')
+                logger.error('PostgreSQL database driver is not installed.')
                 return data.NoStorage()
             return data.PostgreSQLConnector(
                 host=parser.value('host'),
@@ -96,7 +123,7 @@ DEBUG: {parser})
         case 'none':
             return data.NoStorage()
         case _:
-            qWarning(f'WARNING: Not recognized storage type: {parser.value('type')}')
+            logger.error(f'Not recognized storage type: {parser.value('type')}')
             return data.NoStorage()
 
 

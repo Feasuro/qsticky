@@ -1,9 +1,10 @@
+import logging
+
 import psycopg2
 
-from PyQt6.QtCore import qInfo, qDebug
+from qsticky.data.abstract import DataBaseConnector, HandleError
 
-from qsticky.data.abstract import DataBaseConnector, CatchError
-
+logger = logging.getLogger(__package__)
 
 class PostgreSQLConnector(DataBaseConnector):
     """ PostgreSQL database connector class. """
@@ -47,7 +48,7 @@ class PostgreSQLConnector(DataBaseConnector):
         'pref_get': 'SELECT checked, bgcolor, font, fcolor FROM preferences WHERE id = 0;',
     }
 
-    @CatchError(psycopg2.Error)
+    @HandleError(psycopg2.Error)
     def __init__(self, host: str, port: str, dbname: str, user: str, password: str) -> None:
         """ Initialize the database connection.
 
@@ -68,20 +69,19 @@ class PostgreSQLConnector(DataBaseConnector):
         with self.conn.cursor() as cursor:
             cursor.execute("SELECT version();")
             query = cursor.fetchone()
-        qInfo(f"INFO : PostgreSQLConnector::Connected to - {query[0]}")
-        qDebug("DEBUG: PostgreSQL server information:")
-        qDebug(str(self.conn.get_dsn_parameters()))
+        logger.info(f"PostgreSQLConnector::Connected to - {query[0]}")
+        logger.debug("PostgreSQLConnector::server information:")
+        logger.debug(self.conn.get_dsn_parameters())
         self.execute_sql('init')
         self.execute_sql('pref_init')
 
 
-    @CatchError(psycopg2.Error)
+    @HandleError(psycopg2.Error)
     def execute_sql(self, statement: str, values:dict|int={}) -> psycopg2.extensions.cursor:
         if statement not in self.SQL:
             raise ValueError(f"Invalid SQL argument: {statement}")
         if isinstance(values, int):
             values = {'id': values} # convert to dict to pass as statement value
-        qInfo(f"INFO : Executing SQL: '{statement}' with values: {values}")
 
         cursor = self.conn.cursor()
         cursor.execute(self.SQL[statement], values)

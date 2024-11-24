@@ -1,9 +1,9 @@
 import sqlite3
+import logging
 
-from PyQt6.QtCore import qInfo
+from qsticky.data.abstract import DataBaseConnector, HandleError
 
-from qsticky.data.abstract import DataBaseConnector, CatchError
-
+logger = logging.getLogger(__package__)
 
 class SQLiteConnector(DataBaseConnector):
     """ A SQLite3 connector. """
@@ -47,24 +47,23 @@ class SQLiteConnector(DataBaseConnector):
         'pref_get': 'SELECT checked, bgcolor, font, fcolor FROM preferences WHERE id = 0;',
     }
 
-    @CatchError(sqlite3.Error)
+    @HandleError(sqlite3.Error)
     def __init__(self, db:str) -> None:
         """ Initialize the database connection.
 
         Args:
             db (str): The path of the SQLite database file. """
         self.conn = sqlite3.connect(db)
-        qInfo(f'INFO : SQLiteConnector::Connected to - {db}')
+        logger.info(f'SQLiteConnector::Connected to - {db}')
         self.execute_sql('init')
         self.execute_sql('pref_init')
 
-    @CatchError(sqlite3.Error)
+    @HandleError(sqlite3.Error)
     def execute_sql(self, statement: str, values:dict|int={}) -> sqlite3.Cursor:
         if statement not in self.SQL:
             raise ValueError(f"Invalid SQL argument: {statement}")
         if isinstance(values, int):
             values = {'id': values} # convert to dict to pass as statement value
-        qInfo(f"INFO : Executing SQL: '{statement}' with values: {values}")
 
         with self.conn as connection:
             return connection.execute(self.SQL[statement], values)

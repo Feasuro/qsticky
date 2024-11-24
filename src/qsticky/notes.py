@@ -1,14 +1,16 @@
 """ Define the widget class that displays sticky notes. """
-from PyQt6.QtCore import Qt, QTranslator, QLibraryInfo, QLocale, qDebug, qInfo
+import logging
+
+from PyQt6.QtCore import Qt, QTranslator, QLibraryInfo, QLocale
 from PyQt6.QtCore import pyqtSignal as Signal
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QPlainTextEdit, QSizeGrip
 
 import qsticky.resources
 from qsticky import __version__
-from qsticky.data import NoStorage
 from qsticky.preferences import PreferencesWidget, Font
 
+logger = logging.getLogger(__name__)
 DEFAULTS = ('', 10, 10, 256, 256, 'lemonchiffon', '', 'black')
 
 class NoteWidget(QPlainTextEdit):
@@ -19,7 +21,7 @@ class NoteWidget(QPlainTextEdit):
         db (data.StorageConnector): Storage tasks helper object.
         style (string): QSS style sheet string for widgets. """
     all = {}
-    db = NoStorage()
+    db = None
     style = 'NoteWidget {{background: {}; color: {};}}'
     quit_signal = Signal()
 
@@ -33,7 +35,7 @@ class NoteWidget(QPlainTextEdit):
         Args:
             row (tuple): Tuple of id, text, xpos, ypos, width, height, bgcolor, font,
                 fcolor. A database record of note. """
-        qDebug(f"DEBUG: NoteWidget::__init__{row}")
+        logger.debug(f"NoteWidget.__init__{row}")
         self.id = row[0]
         super().__init__(row[1], *args, **kwargs)
         self.setGeometry(*row[2:6])
@@ -133,14 +135,14 @@ class NoteWidget(QPlainTextEdit):
     @classmethod
     def apply_to_all(cls, bgcolor:str, font:str|Font, fcolor:str) -> None:
         """ Apply the selected color and font to all notes. """
-        qDebug(f"DEBUG: NoteWidget::apply_to_all {bgcolor}, {font}, {fcolor}")
+        logger.info(f"NoteWidget::Applying settings globally")
         for note in cls.all.values():
             note.apply(bgcolor, font, fcolor)
 
     @classmethod
     def show_all(cls) -> None:
         """ Show all hidden note windows. """
-        qDebug("DEBUG: NoteWidget::show_all")
+        logger.info("NoteWidget::Show all notes")
         for note in cls.all.values():
             if not note.isVisible():
                 note.show()
@@ -148,7 +150,7 @@ class NoteWidget(QPlainTextEdit):
     @classmethod
     def new_note(cls) -> 'NoteWidget':
         """ Create a new empty note window. """
-        qDebug("DEBUG: NoteWidget::new_note")
+        logger.info("NoteWidget::Creating new note")
         new_rowid = 1 + max(cls.all, default=0)
         ## Can manipulate new row-id calculation here, like:
         #new_rowid = 0
@@ -165,7 +167,7 @@ class NoteWidget(QPlainTextEdit):
 
     def delete(self) -> None:
         """ Delete note window and database record. """
-        qDebug(f"DEBUG: NoteWidget::delete; {self.id}")
+        logger.info(f"NoteWidget::Deleting note {self.id}")
         self.all.pop(self.id).close()
         self.db.delete(self.id)
         self.quit_signal.emit()
@@ -174,7 +176,7 @@ class NoteWidget(QPlainTextEdit):
         """ Open the preferences dialog for the specified note. """
         if not (global_pref := self.db.get_preferences()):
             global_pref = (1, *DEFAULTS[5:])
-        qDebug(f"DEBUG: NoteWidget::prefs_dialog; {global_pref}")
+        logger.debug(f"NoteWidget::prefs_dialog; {global_pref}")
         self.pref_widget = PreferencesWidget(global_pref, self)
         self.pref_widget.save_signal.connect(self.save_preferences)
         self.pref_widget.show()
@@ -184,7 +186,7 @@ class NoteWidget(QPlainTextEdit):
 
         Args:
             preferences (dict): Global preferences chosen in dialog. """
-        qDebug(f"DEBUG: NoteWidget::save_preferences; {preferences}")
+        logger.info(f"NoteWidget::Saving preferences")
         if not preferences['checked']: # Global not chosen
             self.db.save(self.as_dict())
             self.preference = (
@@ -217,7 +219,7 @@ class NoteApplication(QApplication):
 
     def start(self) -> None:
         """ Show saved notes if found, if not create one. """
-        qDebug("DEBUG: NoteApplication::start")
+        logger.info("NoteApplication::Starting ...")
         if rows := NoteWidget.db.retrieve():
             for row in rows:
                 note = NoteWidget(row)
@@ -236,5 +238,5 @@ class NoteApplication(QApplication):
             if note.isVisible():
                 break
         else:
-            qInfo("INFO : All notes are hidden. Exiting...")
+            logger.info("NoteApplication::All notes are hidden. Exiting...")
             self.quit()

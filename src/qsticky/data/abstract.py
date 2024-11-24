@@ -1,10 +1,12 @@
 """ Defines helper classes for storing and retrieving NoteWidget state information. """
+import logging
 from abc import ABC, abstractmethod
 from functools import wraps
 from contextlib import closing
 
-from PyQt6.QtCore import qCritical, qInfo
 from PyQt6.QtWidgets import QMessageBox
+
+logger = logging.getLogger(__package__)
 
 class StorageConnector(ABC):
     """ An abstract class for note-storing functionality. """
@@ -74,7 +76,7 @@ class StorageConnector(ABC):
 class NoStorage(StorageConnector):
     """ Defines a dummy connector for no storage functionality. """
     def __init__(self) -> None:
-        qInfo(f'INFO : NoStorage::Running in memory')
+        logger.warning(f'NoStorage::Running in memory')
 
     def retrieve(self) -> list[tuple]:
         return []
@@ -138,18 +140,27 @@ class DataBaseConnector(StorageConnector):
             return bool(cursor)
 
 
-class CatchError:
+class HandleError:
     """ Decorator class for catching and logging database errors. """
     def __init__(self, error):
         self.error = error
 
     def __call__(self, func):
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(obj: StorageConnector, *args, **kwargs):
+            logger.debug(f'{type(obj).__name__}.{func.__name__}{args}')
             try:
-                return func(*args, **kwargs)
+                return func(obj, *args, **kwargs)
             except self.error as e:
-                qCritical(f"ERROR: {func.__name__} failed while executing {args}:\n{str(e)}")
-                QMessageBox.critical(None, "Error", f"An error occurred in {func.__name__} function executing statement {args}:\n{str(e)}")
-                return None
+                logger.critical(f'''{type(obj).__name__}.{func.__name__} failed!
+Args: {args} Kwargs: {kwargs}''')
+                QMessageBox.critical(
+                    None,
+                    'Error',
+                    f'''An error occurred in {type(obj).__name__}.{func.__name__}
+Args: {args} Kwargs: {kwargs}
+
+{e}'''
+                )
+                raise
         return wrapper
