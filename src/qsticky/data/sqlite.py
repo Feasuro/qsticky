@@ -1,5 +1,5 @@
-import sqlite3
 import logging
+import sqlite3
 
 from qsticky.data.abstract import DataBaseConnector, HandleError
 
@@ -11,13 +11,13 @@ class SQLiteConnector(DataBaseConnector):
         'init': '''CREATE TABLE IF NOT EXISTS notes (
             id      INTEGER     PRIMARY KEY,
             text    TEXT        NOT NULL,
-            xpos    INTEGER,
-            ypos    INTEGER,
-            width   INTEGER,
-            height  INTEGER,
-            bgcolor TEXT,
-            font    TEXT,
-            fcolor  TEXT);''',
+            xpos    INTEGER     NOT NULL,
+            ypos    INTEGER     NOT NULL,
+            width   INTEGER     NOT NULL,
+            height  INTEGER     NOT NULL,
+            bgcolor TEXT        NOT NULL,
+            font    TEXT        NOT NULL,
+            fcolor  TEXT        NOT NULL);''',
 
         'retrieve': 'SELECT * FROM notes;',
 
@@ -34,10 +34,10 @@ class SQLiteConnector(DataBaseConnector):
 
         'pref_init': '''CREATE TABLE IF NOT EXISTS preferences (
             id      INTEGER     PRIMARY KEY,
-            checked INTEGER        NOT NULL,
-            bgcolor TEXT,
-            font    TEXT,
-            fcolor  TEXT);''',
+            checked INTEGER     NOT NULL,
+            bgcolor TEXT        NOT NULL,
+            font    TEXT        NOT NULL,
+            fcolor  TEXT        NOT NULL);''',
 
         'pref_upsert': '''INSERT INTO preferences(id, checked, bgcolor, font, fcolor)
             VALUES (0, :checked, :bgcolor, :font, :fcolor)
