@@ -7,7 +7,10 @@ arch=(any)
 url="https://github.com/Feasuro/${qsticky}"
 license=('GPL-3.0-or-later')
 depends=('python-pyqt6')
-optdepends=('python-psycopg2: PostgreSQL database support')
+optdepends=(
+  'python-psycopg2: PostgreSQL database support'
+  'python-mysqlclient: MySQL database support'
+  )
 makedepends=('git' 'python-setuptools' 'python-build' 'python-installer')
 source=("${pkgname}::git+${url}.git")
 sha256sums=('SKIP')

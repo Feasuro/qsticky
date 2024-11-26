@@ -31,7 +31,7 @@ class ArgumentParser(QCommandLineParser):
         self.addOption(QCommandLineOption(
             ['t', 'type'],
             self.tr('The database engine to connect with.\ndefault: sqlite'),
-            'sqlite|none|postgre',
+            'sqlite|none|postgre|mysql',
             'sqlite'
         ))
         self.addOption(QCommandLineOption(
@@ -112,6 +112,30 @@ class ArgumentParser(QCommandLineParser):
                     host=self.value('host'),
                     port=self.value('port'),
                     dbname=self.value('dbname'),
+                    user=self.value('user'),
+                    password=self.value('password')
+                )
+
+            case 'mysql':
+                if self.isSet('sqlite-db'):
+                    logger.warning(f'{type(self).__name__}::Ignoring option --sqlite-db {self.value('f')}')
+                if not self.isSet('port'):
+                    pass
+                # TODO: support defult port 3306
+                logger.debug(f'''{type(self).__name__}::
+###    host = {self.value("host")}
+###    port = {self.value("port")}
+###    dbname = {self.value("dbname")}
+###    user = {self.value("user")}
+###    password = {self.value("password")}'''
+                )
+                if not data.has_mysql:
+                    logger.error('MySQL database driver is not installed.')
+                    return data.NoStorage()
+                return data.MySQLConnector(
+                    host=self.value('host'),
+                    port=int(self.value('port')),
+                    database=self.value('dbname'),
                     user=self.value('user'),
                     password=self.value('password')
                 )
