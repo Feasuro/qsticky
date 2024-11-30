@@ -32,7 +32,7 @@ class ColorButton(QPushButton):
     def pick_color(self) -> str:
         """ Dialog for color selection. """
         self.color = QColorDialog(self).getColor().name()
-        logger.debug(f"ColorButton::pick_color; {self.color}, {type(self.color)}")
+        logger.debug(f"ColorButton.pick_color {self.color}")
         self.setStyleSheet(self.style.format(self.color))
         return self.color
 
@@ -55,7 +55,7 @@ class FontButton(QPushButton):
     def pick_font(self) -> QFont:
         """ Dialog for font selection. """
         font, _ = QFontDialog(self).getFont()
-        logger.debug(f"FontButton::pick_font, {font}")
+        logger.debug(f"FontButton.pick_font {font}")
         self.setFont(font)
         self.setText(f"{font.family()} {font.styleName()} {font.pointSize()}")
         return font
@@ -83,7 +83,7 @@ class PreferencesWidget(QDialog):
         
         Args:
             global_preference (tuple): Tuple of checked, bgcolor, font, fcolor. """
-        logger.debug(f'PreferencesWidget::__init__\n      {global_preference}, {args}, {kwargs}')
+        logger.debug(f'PreferencesWidget.__init__{global_preference}, {args}, {kwargs}')
         super().__init__(*args, **kwargs)
         if (parent := self.parent()) is None:
             raise RuntimeWarning("PreferencesWidget needs a parent NoteWidget")

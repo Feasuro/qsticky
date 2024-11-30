@@ -1,3 +1,5 @@
+""" Defines class of PostgreSQL connector.
+For storing NoteWidget instances in PostgreSQL database. """
 import logging
 
 import psycopg2
@@ -26,7 +28,7 @@ class PostgreSQLConnector(DataBaseConnector):
             VALUES(%(id)s, %(text)s, %(xpos)s, %(ypos)s, %(width)s, %(height)s, %(bgcolor)s, %(font)s, %(fcolor)s)
             ON CONFLICT(id) DO UPDATE
             SET text = %(text)s, xpos = %(xpos)s, ypos = %(ypos)s, width = %(width)s, height = %(height)s,
-            bgcolor = %(bgcolor)s, font = %(font)s, fcolor = %(fcolor)s RETURNING id;''',
+            bgcolor = %(bgcolor)s, font = %(font)s, fcolor = %(fcolor)s;''',
 
         'update': '''UPDATE notes SET text = %(text)s, xpos = %(xpos)s, ypos = %(ypos)s,
             width = %(width)s, height = %(height)s WHERE id = %(id)s;''',
@@ -79,7 +81,7 @@ class PostgreSQLConnector(DataBaseConnector):
     @HandleError(psycopg2.Error)
     def execute_sql(self, statement: str, values:dict|int={}) -> psycopg2.extensions.cursor:
         if statement not in self.SQL:
-            raise ValueError(f"Invalid SQL argument: {statement}")
+            raise ValueError(f"Invalid SQL key argument: {statement}")
         if isinstance(values, int):
             values = {'id': values} # convert to dict to pass as statement value
 
@@ -87,7 +89,3 @@ class PostgreSQLConnector(DataBaseConnector):
         cursor.execute(self.SQL[statement], values)
         self.conn.commit()
         return cursor
-
-    def save(self, note: dict) -> int:
-        """ Override save method because PSQL doesn't support OID's and lastrowid is always 0 """
-        return self.execute_sql('upsert', note).fetchone()[0]

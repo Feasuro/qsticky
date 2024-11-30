@@ -151,15 +151,14 @@ class NoteWidget(QPlainTextEdit):
     def new_note(cls) -> 'NoteWidget':
         """ Create a new empty note window. """
         logger.info("NoteWidget::Creating new note")
-        new_rowid = 1 + max(cls.all, default=0)
+        new_rowid = 0
+        while new_rowid in cls.all:
+            new_rowid += 1
         ## Can manipulate new row-id calculation here, like:
-        #new_rowid = 0
-        #while new_rowid in cls.all:
-        #    new_rowid += 1
+        #new_rowid = 1 + max(cls.all, default=0)
         note = cls((new_rowid, *DEFAULTS))
-        last_rowid = cls.db.save(note.as_dict())
-        if note.id != last_rowid:
-            raise RuntimeWarning(f"WARNING: id mismatch: {note.id} != {last_rowid}")
+        note.quit_signal.connect(NoteApplication.instance().quit_condition)
+        cls.db.save(note.as_dict())
         if (pref := cls.db.get_preferences()) and pref[0]:
             note.apply(*pref[1:])
         note.show()
@@ -176,7 +175,7 @@ class NoteWidget(QPlainTextEdit):
         """ Open the preferences dialog for the specified note. """
         if not (global_pref := self.db.get_preferences()):
             global_pref = (1, *DEFAULTS[5:])
-        logger.debug(f"NoteWidget::prefs_dialog; {global_pref}")
+        logger.debug(f"NoteWidget.prefs_dialog; {global_pref}")
         self.pref_widget = PreferencesWidget(global_pref, self)
         self.pref_widget.save_signal.connect(self.save_preferences)
         self.pref_widget.show()

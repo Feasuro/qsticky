@@ -16,6 +16,8 @@ class ArgumentParser(QCommandLineParser):
     default_dir = os.getenv('XDG_DATA_HOME', default=os.path.expanduser('~/.local/share'))
     def __init__(self) -> None:
         super().__init__()
+        self.connector = data.NoStorage
+        self.params = {}
         self.setApplicationDescription(self.tr('Show sticky notes on your desktop.'))
         self.addHelpOption()
         self.addVersionOption()
@@ -70,8 +72,13 @@ class ArgumentParser(QCommandLineParser):
         ))
 
     def process(self, app: NoteApplication) -> None:
-        """ Process command-line arguments and set up logging levels. """
+        """ Process command-line arguments. """
         super().process(app)
+        self.setup_logging()
+        self.setup_connection()
+
+    def setup_logging(self) -> None:
+        """ Set up logging levels based on command-line arguments. """
         if self.isSet('debug'):
             logging.basicConfig(level=logging.DEBUG)
         elif self.isSet('verbose'):
@@ -79,74 +86,63 @@ class ArgumentParser(QCommandLineParser):
         else:
             logging.basicConfig()
 
-    def connect(self) -> data.StorageConnector:
+    def setup_connection(self) -> None:
         """ Choose apropriate StorageConnector and connect to the specified database. """
-        logger.debug(f'''{type(self).__name__}::Specified: {self.optionNames()}
-###    type = {self.value("type")}'''
-        )
+        logger.debug(f'{type(self).__name__}::Specified: {self.optionNames()}')
         match self.value('type'):
 
             case 'sqlite':
                 for opt in ['host', 'port', 'dbname', 'user', 'password']:
                     if self.isSet(opt):
                         logger.warning(f'{type(self).__name__}::Ignoring option --{opt} {self.value(opt)}')
-                logger.debug(f'''{type(self).__name__}::
-###    sqlite-db = {self.value("sqlite-db")}'''
-                )
-                return data.SQLiteConnector(self.value('sqlite-db'))
+                self.params['db'] = self.value('sqlite-db')
+                self.connector = data.SQLiteConnector
 
             case 'postgre':
                 if self.isSet('sqlite-db'):
                     logger.warning(f'{type(self).__name__}::Ignoring option --sqlite-db {self.value('f')}')
-                logger.debug(f'''{type(self).__name__}::
-###    host = {self.value("host")}
-###    port = {self.value("port")}
-###    dbname = {self.value("dbname")}
-###    user = {self.value("user")}
-###    password = {self.value("password")}'''
-                )
+                self.params = {
+                    'host': self.value('host'),
+                    'port': self.value('port'),
+                    'dbname': self.value('dbname'),
+                    'user': self.value('user'),
+                    'password': self.value('password')
+                }
                 if not data.has_postgre:
                     logger.error('PostgreSQL database driver is not installed.')
-                    return data.NoStorage()
-                return data.PostgreSQLConnector(
-                    host=self.value('host'),
-                    port=self.value('port'),
-                    dbname=self.value('dbname'),
-                    user=self.value('user'),
-                    password=self.value('password')
-                )
+                else:
+                    self.connector = data.PostgreSQLConnector
 
             case 'mysql':
                 if self.isSet('sqlite-db'):
                     logger.warning(f'{type(self).__name__}::Ignoring option --sqlite-db {self.value('f')}')
-                if not self.isSet('port'):
-                    pass
-                # TODO: support defult port 3306
-                logger.debug(f'''{type(self).__name__}::
-###    host = {self.value("host")}
-###    port = {self.value("port")}
-###    dbname = {self.value("dbname")}
-###    user = {self.value("user")}
-###    password = {self.value("password")}'''
-                )
+                self.params = {
+                    'host': self.value('host'),
+                    'port': int(self.value('port')) if self.isSet('port') else 3306,
+                    'database': self.value('dbname'),
+                    'user': self.value('user'),
+                    'password': self.value('password')
+                }
                 if not data.has_mysql:
                     logger.error('MySQL database driver is not installed.')
-                    return data.NoStorage()
-                return data.MySQLConnector(
-                    host=self.value('host'),
-                    port=int(self.value('port')),
-                    database=self.value('dbname'),
-                    user=self.value('user'),
-                    password=self.value('password')
-                )
+                else:
+                    self.connector = data.MySQLConnector
 
             case 'none':
-                return data.NoStorage()
+                for opt in ['sqlite-db', 'host', 'port', 'dbname', 'user', 'password']:
+                    if self.isSet(opt):
+                        logger.warning(f'{type(self).__name__}::Ignoring option --{opt} {self.value(opt)}')
 
             case _:
                 logger.error(f'Not recognized storage type: {self.value('type')}')
-                return data.NoStorage()
 
+    def connect(self) -> data.StorageConnector:
+        """ Connect to the specified database and return the StorageConnector. """
+        try:
+            return self.connector(**self.params)
+        except Exception as error:
+            logger.error(f'{type(self).__name__}::Error connecting to database: {error}')
+            return data.NoStorage()
 
 def main() -> int:
     """ Main function used to run the program. """

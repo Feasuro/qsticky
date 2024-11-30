@@ -1,3 +1,5 @@
+""" Defines class of SQLite connector.
+For storing NoteWidget instances in SQLite database. """
 import logging
 import sqlite3
 
@@ -61,7 +63,7 @@ class SQLiteConnector(DataBaseConnector):
     @HandleError(sqlite3.Error)
     def execute_sql(self, statement: str, values:dict|int={}) -> sqlite3.Cursor:
         if statement not in self.SQL:
-            raise ValueError(f"Invalid SQL argument: {statement}")
+            raise ValueError(f"Invalid SQL key argument: {statement}")
         if isinstance(values, int):
             values = {'id': values} # convert to dict to pass as statement value
 

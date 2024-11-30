@@ -1,3 +1,5 @@
+""" Defines class of MySQL connector.
+For storing NoteWidget instances in MySQL database. """
 import logging
 
 import MySQLdb
@@ -72,7 +74,7 @@ class MySQLConnector(DataBaseConnector):
     @HandleError(MySQLdb.Error)
     def execute_sql(self, statement: str, values:dict|int={}):# -> MySQLdb.cursors.Cursor:
         if statement not in self.SQL:
-            raise ValueError(f"Invalid SQL argument: {statement}")
+            raise ValueError(f"Invalid SQL key argument: {statement}")
         if isinstance(values, int):
             values = {'id': values} # convert to dict to pass as statement value
 
@@ -80,33 +82,3 @@ class MySQLConnector(DataBaseConnector):
         cursor.execute(self.SQL[statement], values)
         self.conn.commit()
         return cursor
-
-if __name__ == '__main__':
-    from PyQt6.QtWidgets import QApplication
-    logging.basicConfig(level=logging.DEBUG)
-    app = QApplication([])
-
-    # Example usage
-    db = MySQLConnector('localhost', 3306, 'qsticky', 'gonzo', 'XPassX')
-
-    # Retrieve all notes
-    cursor = db.execute_sql('retrieve')
-    notes = cursor.fetchall()
-    for note in notes:
-        print(note)
-
-    # Insert a new note
-    db.execute_sql('upsert', {
-        'id': 1,
-        'text': 'Hello, World!',
-        'xpos': 10,
-        'ypos': 20,
-        'width': 200,
-        'height': 100,
-        'bgcolor': '#ffffff',
-        'font': 'Arial',
-        'fcolor': '#000000',
-    })
-
-    # Delete a note
-    #db.execute_sql('delete', 1)

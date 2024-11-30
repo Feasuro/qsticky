@@ -21,14 +21,14 @@ class StorageConnector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def save(self, note: dict) -> int:
+    def save(self, note: dict) -> bool:
         """ Save a note in the storage.
 
         Args:
             note (dict): Dictionary of note parameters.
 
         Returns:
-            int: Id numer of the note. """
+            bool: True if note saved successfully, False otherwise. """
         raise NotImplementedError
 
     @abstractmethod
@@ -39,7 +39,7 @@ class StorageConnector(ABC):
             note (dict): Dictionary of note parameters.
 
         Returns:
-            bool: True if note saved successfully, False otherwise. """
+            bool: True if note updated successfully, False otherwise. """
         raise NotImplementedError
 
     @abstractmethod
@@ -81,8 +81,8 @@ class NoStorage(StorageConnector):
     def retrieve(self) -> list[tuple]:
         return []
 
-    def save(self, note: dict) -> int:
-        return note['id']
+    def save(self, note: dict) -> bool:
+        return True
 
     def update(self, note: dict) -> bool:
         return True
@@ -119,9 +119,9 @@ class DataBaseConnector(StorageConnector):
         with closing(self.execute_sql('retrieve')) as cursor:
             return cursor.fetchall()
 
-    def save(self, note: dict) -> int:
+    def save(self, note: dict) -> bool:
         with closing(self.execute_sql('upsert', note)) as cursor:
-            return cursor.lastrowid
+            return bool(cursor)
 
     def update(self, note: dict) -> bool:
         with closing(self.execute_sql('update', note)) as cursor:
@@ -148,17 +148,19 @@ class HandleError:
     def __call__(self, func):
         @wraps(func)
         def wrapper(obj: StorageConnector, *args, **kwargs):
-            logger.debug(f'{type(obj).__name__}.{func.__name__}{args}')
+            kwargs2 = dict(kwargs)
+            if 'password' in kwargs2:
+                kwargs2['password'] = '*****'  # Mask password for logging
+            logger.debug(f'{type(obj).__name__}.{func.__name__}{args}{kwargs2}')
             try:
                 return func(obj, *args, **kwargs)
             except self.error as e:
-                logger.critical(f'''{type(obj).__name__}.{func.__name__} failed!
-Args: {args} Kwargs: {kwargs}''')
+                logger.error(f'{type(obj).__name__}.{func.__name__} failed! Args: {args} Kwargs: {kwargs2}')
                 QMessageBox.critical(
                     None,
                     'Error',
                     f'''An error occurred in {type(obj).__name__}.{func.__name__}
-Args: {args} Kwargs: {kwargs}
+Args: {args} Kwargs: {kwargs2}
 
 {e}'''
                 )

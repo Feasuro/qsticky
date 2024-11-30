@@ -1,10 +1,10 @@
 # Maintainer: Feasuro <feasuro at pm dot me>
 pkgname=qsticky
-pkgver=1.2
+pkgver=1.3
 pkgrel=1
 pkgdesc='Sticky desktop notes application.'
 arch=(any)
-url="https://github.com/Feasuro/${qsticky}"
+url="https://github.com/Feasuro/${pkgname}"
 license=('GPL-3.0-or-later')
 depends=('python-pyqt6')
 optdepends=(
@@ -23,6 +23,11 @@ pkgver() {
   )
 }
 
+prepare() {
+  cd "${srcdir}/${pkgname}"
+  sed -i "3s/^\(Version=\).*/\1${pkgver}/" "${pkgname}.desktop"
+}
+
 build() {
   cd "${srcdir}/${pkgname}"
   python -m build --wheel --no-isolation
@@ -31,4 +36,6 @@ build() {
 package() {
   cd "${srcdir}/${pkgname}"
   python -m installer --destdir="${pkgdir}" dist/*.whl
+  install -Dm0644 "resources/basket.png" "${pkgdir}/usr/share/icons/hicolor/128x128/apps/${pkgname}.png"
+  install -Dm0644 -t "${pkgdir}/usr/share/applications/" "${pkgname}.desktop"
 }
